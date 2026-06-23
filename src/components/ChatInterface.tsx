@@ -48,7 +48,7 @@ export default function ChatInterface({ documentId, groupId }: ChatInterfaceProp
   return (
     <div className="flex flex-col h-[600px]">
       {/* Messages */}
-      <ScrollArea className="flex-1 pr-4">
+      <ScrollArea className="flex-1 min-h-0 pr-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-3">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">

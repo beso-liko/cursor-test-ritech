@@ -80,7 +80,20 @@ SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 PINECONE_API_KEY=
 PINECONE_INDEX_NAME=study-assistant
+
+# Your deployed site URL — used as the base for email verification links.
+# Leave empty for local development (falls back to window.location.origin).
+NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
 ```
+
+### Supabase email redirect configuration
+
+Email verification links will point to `localhost:3000` unless you configure Supabase:
+
+1. Go to **Supabase Dashboard → Authentication → URL Configuration**
+2. Set **Site URL** to your production URL (e.g. `https://your-app.vercel.app`)
+3. Under **Redirect URLs**, add `https://your-app.vercel.app/auth/callback`
+4. Optionally also add `http://localhost:3000/auth/callback` for local testing
 
 ---
 
