@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Document } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/LanguageProvider";
 
 const fileIcons = {
   pdf: { icon: FileText, color: "text-red-500 bg-red-50" },
@@ -18,24 +19,27 @@ const fileIcons = {
   jpeg: { icon: Image, color: "text-violet-500 bg-violet-50" },
 };
 
-const statusConfig = {
-  ready: { label: "Ready", icon: CheckCircle, class: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  processing: { label: "Processing", icon: Clock, class: "bg-amber-50 text-amber-700 border-amber-200" },
-  error: { label: "Error", icon: AlertCircle, class: "bg-red-50 text-red-700 border-red-200" },
-};
-
 interface DocumentCardProps {
   document: Document;
   onDelete?: (id: string) => void;
 }
 
 export default function DocumentCard({ document: doc, onDelete }: DocumentCardProps) {
-  const fileConfig = fileIcons[doc.file_type] ?? fileIcons.txt;
-  const status = statusConfig[doc.status];
+  const { t, locale } = useLanguage();
+
+  const statusConfig = {
+    ready: { label: t("card.status.ready"), icon: CheckCircle, class: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    processing: { label: t("card.status.processing"), icon: Clock, class: "bg-amber-50 text-amber-700 border-amber-200" },
+    error: { label: t("card.status.error"), icon: AlertCircle, class: "bg-red-50 text-red-700 border-red-200" },
+  };
+
+  const fileConfig = fileIcons[doc.file_type as keyof typeof fileIcons] ?? fileIcons.txt;
+  const status = statusConfig[doc.status as keyof typeof statusConfig] ?? statusConfig.error;
   const Icon = fileConfig.icon;
   const StatusIcon = status.icon;
 
-  const formattedDate = new Date(doc.created_at).toLocaleDateString("en-US", {
+  const dateLocale = locale === "sq" ? "sq-AL" : "en-US";
+  const formattedDate = new Date(doc.created_at).toLocaleDateString(dateLocale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -67,7 +71,7 @@ export default function DocumentCard({ document: doc, onDelete }: DocumentCardPr
               </Badge>
               {doc.chunk_count > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  {doc.chunk_count} chunks
+                  {t("card.chunks", { n: doc.chunk_count })}
                 </span>
               )}
             </div>

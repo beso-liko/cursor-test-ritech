@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import AppShell from "@/components/AppShell";
 import DocumentCard from "@/components/DocumentCard";
 import type { Document } from "@/lib/supabase/types";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const { t } = useLanguage();
 
   const fetchDocuments = async () => {
     try {
@@ -31,7 +33,7 @@ export default function DocumentsPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this document? This cannot be undone.")) return;
+    if (!confirm(t("documents.delete.confirm"))) return;
     setDocuments((docs) => docs.filter((d) => d.id !== id));
     await fetch(`/api/documents/${id}`, { method: "DELETE" });
   };
@@ -40,20 +42,27 @@ export default function DocumentsPage() {
     d.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const docCountLabel =
+    documents.length === 1
+      ? t("documents.count.one")
+      : t("documents.count.other", { n: documents.length });
+
   return (
     <AppShell>
       <div className="px-8 py-8 max-w-5xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Documents</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("documents.title")}
+            </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {documents.length} document{documents.length !== 1 ? "s" : ""}
+              {docCountLabel}
             </p>
           </div>
           <Button nativeButton={false} render={<Link href="/upload" />} className="gap-2">
             <Upload className="w-4 h-4" />
-            Upload
+            {t("documents.upload")}
           </Button>
         </div>
 
@@ -64,7 +73,7 @@ export default function DocumentsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search documents…"
+              placeholder={t("documents.search")}
               className="pl-9"
             />
           </div>
@@ -80,18 +89,20 @@ export default function DocumentsPage() {
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
               <FileText className="w-7 h-7 text-primary" />
             </div>
-            <h3 className="font-semibold text-foreground">No documents yet</h3>
+            <h3 className="font-semibold text-foreground">
+              {t("documents.empty.title")}
+            </h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-              Upload a study document to get started.
+              {t("documents.empty.desc")}
             </p>
             <Button nativeButton={false} render={<Link href="/upload" />} className="mt-4 gap-2">
               <Upload className="w-4 h-4" />
-              Upload document
+              {t("documents.empty.cta")}
             </Button>
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-center text-muted-foreground py-12 text-sm">
-            No documents match &quot;{search}&quot;
+            {t("documents.noMatch", { search })}
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

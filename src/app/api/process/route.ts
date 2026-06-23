@@ -39,7 +39,19 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await fileData.arrayBuffer());
 
     // Extract text
-    const rawText = await extractText(buffer, fileType as FileType);
+    let rawText: string;
+    try {
+      rawText = await extractText(buffer, fileType as FileType);
+    } catch (extractErr) {
+      console.error("Extraction error:", extractErr);
+      await supabase
+        .from("documents")
+        .update({ status: "error" })
+        .eq("id", documentId);
+      const message =
+        extractErr instanceof Error ? extractErr.message : "Extraction failed";
+      return NextResponse.json({ error: message }, { status: 422 });
+    }
 
     if (!rawText || rawText.length < 50) {
       await supabase

@@ -5,6 +5,7 @@ import { Loader2, Sparkles, BookOpen, List, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface SummaryData {
   id: string;
@@ -26,14 +27,17 @@ function parseSummaryContent(content: string): ParsedSummary {
 }
 
 interface SummaryPanelProps {
-  documentId: string;
+  documentId?: string;
+  groupId?: string;
   initialData?: SummaryData | null;
 }
 
 export default function SummaryPanel({
   documentId,
+  groupId,
   initialData,
 }: SummaryPanelProps) {
+  const { t, locale } = useLanguage();
   const [data, setData] = useState<SummaryData | null>(initialData ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,16 +46,17 @@ export default function SummaryPanel({
     setLoading(true);
     setError(null);
     try {
+      const body = groupId ? { groupId, locale } : { documentId, locale };
       const res = await fetch("/api/generate/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to generate summary");
       const result = await res.json();
       setData(result);
     } catch {
-      setError("Failed to generate summary. Please try again.");
+      setError(t("summary.error"));
     } finally {
       setLoading(false);
     }
@@ -62,7 +67,7 @@ export default function SummaryPanel({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Generating summary with AI…</span>
+          <span className="text-sm">{t("summary.generating")}</span>
         </div>
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
@@ -79,15 +84,17 @@ export default function SummaryPanel({
           <BookOpen className="w-7 h-7 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-foreground">No summary yet</h3>
+          <h3 className="font-semibold text-foreground">
+            {t("summary.empty.title")}
+          </h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-            Generate an AI-powered summary of your document including key points and topics.
+            {t("summary.empty.desc")}
           </p>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button onClick={generate} className="gap-2">
           <Sparkles className="w-4 h-4" />
-          Generate Summary
+          {t("summary.generate")}
         </Button>
       </div>
     );
@@ -101,7 +108,9 @@ export default function SummaryPanel({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold text-sm text-foreground">Summary</h3>
+          <h3 className="font-semibold text-sm text-foreground">
+            {t("summary.title")}
+          </h3>
         </div>
         <p className="text-sm text-foreground/80 leading-relaxed bg-accent/30 rounded-xl p-4">
           {parsed.summary}
@@ -113,7 +122,9 @@ export default function SummaryPanel({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <List className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-sm text-foreground">Key Points</h3>
+            <h3 className="font-semibold text-sm text-foreground">
+              {t("summary.keyPoints")}
+            </h3>
           </div>
           <ul className="space-y-2">
             {parsed.keyPoints.map((point, i) => (
@@ -133,7 +144,9 @@ export default function SummaryPanel({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-sm text-foreground">Topics Covered</h3>
+            <h3 className="font-semibold text-sm text-foreground">
+              {t("summary.topics")}
+            </h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {parsed.topics.map((topic) => (

@@ -1,28 +1,33 @@
+"use client";
+
 import { ArrowLeft, Sparkles, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import AppShell from "@/components/AppShell";
 import FileUploader from "@/components/FileUploader";
-
-const features = [
-  {
-    icon: Zap,
-    title: "Instant Processing",
-    desc: "Text is extracted and indexed in seconds",
-  },
-  {
-    icon: Sparkles,
-    title: "AI-Powered",
-    desc: "Generate summaries, flashcards, and quizzes automatically",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Secure Storage",
-    desc: "Files stored securely in Supabase",
-  },
-];
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function UploadPage() {
+  const { t } = useLanguage();
+
+  const features = [
+    {
+      icon: Zap,
+      title: t("upload.feature.instant.title"),
+      desc: t("upload.feature.instant.desc"),
+    },
+    {
+      icon: Sparkles,
+      title: t("upload.feature.ai.title"),
+      desc: t("upload.feature.ai.desc"),
+    },
+    {
+      icon: ShieldCheck,
+      title: t("upload.feature.secure.title"),
+      desc: t("upload.feature.secure.desc"),
+    },
+  ];
+
   return (
     <AppShell>
       <div className="px-8 py-8 max-w-3xl">
@@ -38,9 +43,11 @@ export default function UploadPage() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Upload Document</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("upload.title")}
+            </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Supported: PDF, DOCX, PPTX, TXT, PNG, JPEG — up to 20MB
+              {t("upload.subtitle")}
             </p>
           </div>
         </div>
@@ -54,7 +61,7 @@ export default function UploadPage() {
           {/* Feature sidebar */}
           <div className="md:col-span-2 space-y-4">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              What happens next
+              {t("upload.whatNext")}
             </p>
             {features.map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex gap-3">

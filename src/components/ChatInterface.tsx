@@ -7,18 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface ChatInterfaceProps {
-  documentId: string;
+  documentId?: string;
+  groupId?: string;
 }
 
-export default function ChatInterface({ documentId }: ChatInterfaceProps) {
+export default function ChatInterface({ documentId, groupId }: ChatInterfaceProps) {
+  const { t, locale } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const chatBody = groupId ? { groupId, locale } : { documentId, locale };
 
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat({
       api: "/api/chat",
-      body: { documentId },
+      body: chatBody,
     });
 
   useEffect(() => {
@@ -34,6 +39,12 @@ export default function ChatInterface({ documentId }: ChatInterfaceProps) {
     }
   };
 
+  const suggestions = [
+    t("chat.suggestion.1"),
+    t("chat.suggestion.2"),
+    t("chat.suggestion.3"),
+  ];
+
   return (
     <div className="flex flex-col h-[600px]">
       {/* Messages */}
@@ -45,19 +56,14 @@ export default function ChatInterface({ documentId }: ChatInterfaceProps) {
             </div>
             <div>
               <h3 className="font-semibold text-foreground">
-                Chat with your document
+                {t("chat.title")}
               </h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                Ask any question about the content. The AI will answer based on
-                your document.
+                {t("chat.desc")}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 justify-center mt-2">
-              {[
-                "Summarize the main idea",
-                "What are the key concepts?",
-                "Explain the most important topic",
-              ].map((suggestion) => (
+              {suggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => {
@@ -126,7 +132,7 @@ export default function ChatInterface({ documentId }: ChatInterfaceProps) {
             value={input}
             onChange={handleInputChange}
             onKeyDown={onKeyDown}
-            placeholder="Ask anything about this document…"
+            placeholder={t("chat.placeholder")}
             className="resize-none min-h-[44px] max-h-32 text-sm"
             rows={1}
           />
@@ -144,7 +150,7 @@ export default function ChatInterface({ documentId }: ChatInterfaceProps) {
           </Button>
         </form>
         <p className="text-xs text-muted-foreground mt-1.5">
-          Press Enter to send · Shift+Enter for new line
+          {t("chat.hint")}
         </p>
       </div>
     </div>

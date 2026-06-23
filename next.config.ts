@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     "@napi-rs/canvas",
     "officeparser",
     "mammoth",
+    "sharp",
     "openai",
     "@langchain/openai",
     "@langchain/pinecone",

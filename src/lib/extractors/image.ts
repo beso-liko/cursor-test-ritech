@@ -1,18 +1,42 @@
 import OpenAI from "openai";
+import sharp from "sharp";
+import heicConvert from "heic-convert";
 
-const MIME_TYPES: Record<string, string> = {
+// Formats OpenAI vision supports natively
+const NATIVE_MIME: Record<string, string> = {
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
 };
+
+// HEIC/HEIF use heic-convert (pure-JS, no libheif iref limit)
+const HEIC_TYPES = new Set(["heic", "heif"]);
+// DNG/RAW still go through sharp
+const SHARP_TYPES = new Set(["dng", "raw"]);
 
 export async function extractImageText(
   buffer: Buffer,
   fileType: string
 ): Promise<string> {
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const mimeType = MIME_TYPES[fileType] ?? "image/png";
-  const base64 = buffer.toString("base64");
+
+  let imageBuffer = buffer;
+  let mimeType = NATIVE_MIME[fileType] ?? "image/jpeg";
+
+  if (HEIC_TYPES.has(fileType)) {
+    const converted = await heicConvert({
+      buffer: new Uint8Array(buffer),
+      format: "JPEG",
+      quality: 0.92,
+    });
+    imageBuffer = Buffer.from(converted);
+    mimeType = "image/jpeg";
+  } else if (SHARP_TYPES.has(fileType)) {
+    imageBuffer = await sharp(buffer).jpeg({ quality: 92 }).toBuffer();
+    mimeType = "image/jpeg";
+  }
+
+  const base64 = imageBuffer.toString("base64");
 
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",

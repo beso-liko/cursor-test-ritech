@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Quiz, QuizQuestion } from "@/lib/supabase/types";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface QuizInterfaceProps {
-  documentId: string;
+  documentId?: string;
+  groupId?: string;
   initialQuiz?: Quiz | null;
 }
 
@@ -18,8 +20,10 @@ type QuizPhase = "idle" | "active" | "result";
 
 export default function QuizInterface({
   documentId,
+  groupId,
   initialQuiz,
 }: QuizInterfaceProps) {
+  const { t, locale } = useLanguage();
   const [quiz, setQuiz] = useState<Quiz | null>(initialQuiz ?? null);
   const [phase, setPhase] = useState<QuizPhase>("idle");
   const [currentQ, setCurrentQ] = useState(0);
@@ -33,10 +37,11 @@ export default function QuizInterface({
     setLoading(true);
     setError(null);
     try {
+      const body = groupId ? { groupId, locale } : { documentId, locale };
       const res = await fetch("/api/generate/quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to generate quiz");
       const result: Quiz = await res.json();
@@ -46,7 +51,7 @@ export default function QuizInterface({
       setAnswers([]);
       setSelected(null);
     } catch {
-      setError("Failed to generate quiz. Please try again.");
+      setError(t("quiz.error"));
     } finally {
       setLoading(false);
     }
@@ -58,6 +63,27 @@ export default function QuizInterface({
     setAnswers([]);
     setSelected(null);
     setShowExplanation(false);
+  };
+
+  const retake = async () => {
+    if (!quiz) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/quiz-variant?quizId=${quiz.id}`);
+      if (!res.ok) throw new Error("Failed to load variant");
+      const variant: Quiz = await res.json();
+      setQuiz(variant);
+      setPhase("active");
+      setCurrentQ(0);
+      setAnswers([]);
+      setSelected(null);
+      setShowExplanation(false);
+    } catch {
+      setError(t("quiz.error"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAnswer = (optionIdx: number) => {
@@ -76,7 +102,6 @@ export default function QuizInterface({
       setSelected(null);
       setShowExplanation(false);
     } else {
-      // Quiz complete — save result
       const score = newAnswers.filter(
         (ans, i) => ans === quiz.questions[i].correct
       ).length;
@@ -102,7 +127,7 @@ export default function QuizInterface({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Generating quiz with AI…</span>
+          <span className="text-sm">{t("quiz.generating")}</span>
         </div>
         <Skeleton className="h-6 w-3/4" />
         <div className="space-y-2">
@@ -114,7 +139,6 @@ export default function QuizInterface({
     );
   }
 
-  // No quiz yet
   if (!quiz) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
@@ -122,21 +146,20 @@ export default function QuizInterface({
           <ClipboardList className="w-7 h-7 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-foreground">No quiz yet</h3>
+          <h3 className="font-semibold text-foreground">{t("quiz.empty.title")}</h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-            Generate a 10-question multiple choice quiz to test your understanding.
+            {t("quiz.empty.desc")}
           </p>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button onClick={generate} className="gap-2">
           <Sparkles className="w-4 h-4" />
-          Generate Quiz
+          {t("quiz.generate")}
         </Button>
       </div>
     );
   }
 
-  // Quiz ready but not started
   if (phase === "idle") {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
@@ -144,26 +167,31 @@ export default function QuizInterface({
           <ClipboardList className="w-7 h-7 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-foreground">Quiz ready</h3>
+          <h3 className="font-semibold text-foreground">{t("quiz.ready.title")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {quiz.questions.length} multiple choice questions
+            {t("quiz.ready.questions", { n: quiz.questions.length })}
           </p>
         </div>
         <Button onClick={startQuiz} className="gap-2">
-          Start Quiz
+          {t("quiz.start")}
         </Button>
       </div>
     );
   }
 
-  // Results screen
   if (phase === "result") {
     const score = answers.filter(
       (ans, i) => ans === quiz.questions[i].correct
     ).length;
     const pct = Math.round((score / quiz.questions.length) * 100);
     const grade =
-      pct >= 90 ? "Excellent!" : pct >= 70 ? "Good job!" : pct >= 50 ? "Keep studying!" : "Need more practice";
+      pct >= 90
+        ? t("quiz.result.excellent")
+        : pct >= 70
+        ? t("quiz.result.good")
+        : pct >= 50
+        ? t("quiz.result.keep")
+        : t("quiz.result.practice");
 
     return (
       <div className="max-w-md mx-auto space-y-6">
@@ -175,12 +203,11 @@ export default function QuizInterface({
             <h3 className="text-2xl font-bold text-foreground">{grade}</h3>
             <p className="text-4xl font-bold text-primary mt-1">{pct}%</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {score} / {quiz.questions.length} correct
+              {t("quiz.result.score", { score, total: quiz.questions.length })}
             </p>
           </div>
         </div>
 
-        {/* Answer review */}
         <div className="space-y-3">
           {quiz.questions.map((q: QuizQuestion, i: number) => {
             const correct = answers[i] === q.correct;
@@ -204,7 +231,7 @@ export default function QuizInterface({
                     <p className="font-medium text-foreground">{q.question}</p>
                     {!correct && (
                       <p className="text-xs text-emerald-700 mt-1">
-                        Correct: {q.options[q.correct]}
+                        {t("quiz.result.correct", { answer: q.options[q.correct] })}
                       </p>
                     )}
                   </div>
@@ -217,10 +244,10 @@ export default function QuizInterface({
         <Button
           variant="outline"
           className="w-full gap-2"
-          onClick={startQuiz}
+          onClick={retake}
         >
           <RotateCcw className="w-4 h-4" />
-          Retake Quiz
+          {t("quiz.retake")}
         </Button>
       </div>
     );
@@ -228,7 +255,7 @@ export default function QuizInterface({
 
   // Active quiz
   const question = quiz.questions[currentQ];
-  const progress = ((currentQ) / quiz.questions.length) * 100;
+  const progress = (currentQ / quiz.questions.length) * 100;
 
   return (
     <div className="max-w-xl space-y-6">
@@ -236,10 +263,10 @@ export default function QuizInterface({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Badge variant="outline" className="text-xs">
-            Question {currentQ + 1} of {quiz.questions.length}
+            {t("quiz.question", { current: currentQ + 1, total: quiz.questions.length })}
           </Badge>
           <span className="text-xs text-muted-foreground">
-            {Math.round(progress)}% complete
+            {t("quiz.progress", { pct: Math.round(progress) })}
           </span>
         </div>
         <Progress value={progress} className="h-1.5" />
@@ -301,7 +328,7 @@ export default function QuizInterface({
       {/* Explanation */}
       {showExplanation && (
         <div className="rounded-xl bg-accent/50 border border-border p-3 text-sm">
-          <p className="font-medium text-foreground mb-1">Explanation</p>
+          <p className="font-medium text-foreground mb-1">{t("quiz.explanation")}</p>
           <p className="text-muted-foreground">{question.explanation}</p>
         </div>
       )}
@@ -309,7 +336,9 @@ export default function QuizInterface({
       {/* Next button */}
       {selected !== null && (
         <Button className="w-full" onClick={handleNext}>
-          {currentQ < quiz.questions.length - 1 ? "Next Question" : "See Results"}
+          {currentQ < quiz.questions.length - 1
+            ? t("quiz.next")
+            : t("quiz.seeResults")}
         </Button>
       )}
     </div>

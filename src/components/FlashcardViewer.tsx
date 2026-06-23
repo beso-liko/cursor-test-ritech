@@ -14,16 +14,20 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Flashcard } from "@/lib/supabase/types";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface FlashcardViewerProps {
-  documentId: string;
+  documentId?: string;
+  groupId?: string;
   initialCards?: Flashcard[];
 }
 
 export default function FlashcardViewer({
   documentId,
+  groupId,
   initialCards,
 }: FlashcardViewerProps) {
+  const { t, locale } = useLanguage();
   const [cards, setCards] = useState<Flashcard[]>(initialCards ?? []);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -34,10 +38,11 @@ export default function FlashcardViewer({
     setLoading(true);
     setError(null);
     try {
+      const body = groupId ? { groupId, locale } : { documentId, locale };
       const res = await fetch("/api/generate/flashcards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to generate flashcards");
       const result: Flashcard[] = await res.json();
@@ -45,7 +50,7 @@ export default function FlashcardViewer({
       setIndex(0);
       setFlipped(false);
     } catch {
-      setError("Failed to generate flashcards. Please try again.");
+      setError(t("flashcards.error"));
     } finally {
       setLoading(false);
     }
@@ -66,7 +71,7 @@ export default function FlashcardViewer({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Generating flashcards with AI…</span>
+          <span className="text-sm">{t("flashcards.generating")}</span>
         </div>
         <Skeleton className="h-48 w-full rounded-2xl" />
       </div>
@@ -80,15 +85,17 @@ export default function FlashcardViewer({
           <Layers className="w-7 h-7 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-foreground">No flashcards yet</h3>
+          <h3 className="font-semibold text-foreground">
+            {t("flashcards.empty.title")}
+          </h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-            Generate AI flashcards to test your knowledge of key concepts.
+            {t("flashcards.empty.desc")}
           </p>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button onClick={generate} className="gap-2">
           <Sparkles className="w-4 h-4" />
-          Generate Flashcards
+          {t("flashcards.generate")}
         </Button>
       </div>
     );
@@ -110,7 +117,7 @@ export default function FlashcardViewer({
           onClick={() => { setIndex(0); setFlipped(false); }}
         >
           <RotateCcw className="w-3 h-3" />
-          Restart
+          {t("flashcards.restart")}
         </Button>
       </div>
 
@@ -134,13 +141,13 @@ export default function FlashcardViewer({
             style={{ backfaceVisibility: "hidden" }}
           >
             <p className="text-xs font-medium text-primary uppercase tracking-widest mb-4">
-              Question
+              {t("flashcards.question")}
             </p>
             <p className="text-base font-semibold text-foreground leading-relaxed">
               {card.question}
             </p>
             <p className="text-xs text-muted-foreground mt-6">
-              Click to reveal answer
+              {t("flashcards.reveal")}
             </p>
           </div>
 
@@ -153,7 +160,7 @@ export default function FlashcardViewer({
             }}
           >
             <p className="text-xs font-medium text-emerald-600 uppercase tracking-widest mb-4">
-              Answer
+              {t("flashcards.answer")}
             </p>
             <p className="text-base text-foreground leading-relaxed">{card.answer}</p>
           </div>

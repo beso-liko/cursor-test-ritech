@@ -1,0 +1,69 @@
+---
+description: Enforces difficulty distribution and answer randomisation for flashcard and quiz generation
+globs: src/app/api/generate/**/*.ts
+alwaysApply: false
+---
+
+# AI Generation Structure Rules
+
+## Flashcards — Difficulty Distribution
+
+Always generate exactly **15 flashcards**: 5 easy, 5 medium, 5 hard.
+Label each with a `difficulty` field and structure the prompt to explicitly request this split.
+
+```typescript
+// ✅ GOOD — prompt explicitly requests the difficulty split
+prompt: `Generate exactly 15 flashcards: 5 easy, 5 medium difficulty, and 5 hard.
+- Easy: basic definitions and recall questions
+- Medium: questions requiring understanding and application
+- Hard: questions requiring analysis, synthesis, or nuanced understanding`
+
+// Schema must include difficulty
+const flashcardsSchema = z.object({
+  flashcards: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+    difficulty: z.enum(["easy", "medium", "hard"]),
+  })).length(15),
+});
+```
+
+## Quizzes — Difficulty Distribution & Answer Randomisation
+
+Always generate **~18 questions** (the pool): aim for 6 easy, 6 medium, 6 hard. The Zod schema accepts `min(9)` because LLMs can't hit exact counts reliably — never use `.length(N)` for AI-generated arrays.
+Each retake draws 3 easy + 3 medium + 3 hard from the pool via `GET /api/quiz-variant?quizId=<id>` — no extra LLM call needed.
+
+The `correct` index (0–3 mapping to A–D) **must be randomised** — never default toward 0.
+Enforce this in the prompt and shuffle answer options server-side after generation.
+
+```typescript
+// ✅ GOOD — prompt requests difficulty split and randomised correct positions
+prompt: `Generate exactly 9 multiple choice questions: 3 easy, 3 medium, 3 hard.
+For each question, place the correct answer at a RANDOM position (A, B, C, or D).
+Do not cluster correct answers at any one position — distribute them evenly and unpredictably.`
+
+// ✅ GOOD — server-side shuffle so AI bias cannot leak through
+function shuffleAnswers(q: { question: string; options: string[]; correct: number; explanation: string; difficulty: string }) {
+  const correctAnswer = q.options[q.correct];
+  const shuffled = [...q.options].sort(() => Math.random() - 0.5);
+  return { ...q, options: shuffled, correct: shuffled.indexOf(correctAnswer) };
+}
+const questions = result.object.questions.map(shuffleAnswers);
+
+// Schema must include difficulty
+const quizSchema = z.object({
+  questions: z.array(z.object({
+    question: z.string(),
+    options: z.array(z.string()).length(4),
+    correct: z.number().min(0).max(3),
+    explanation: z.string(),
+    difficulty: z.enum(["easy", "medium", "hard"]),
+  })).length(9),
+});
+```
+
+## Key Rules
+
+- Never generate more or fewer items than specified (15 flashcards, 9 quiz questions).
+- Always shuffle quiz answer positions server-side regardless of what the LLM returns — this is the only reliable guarantee of randomisation.
+- Always persist `difficulty` on the inserted rows so the UI can group/filter by it.
