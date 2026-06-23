@@ -206,7 +206,8 @@ Generate a detailed summary with key points and main topics covered.${lang}`,
 
       const { data, error } = await supabase
         .from("summaries")
-        .insert(row)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert(row as any)
         .select()
         .single();
 
@@ -241,7 +242,8 @@ Generate clear, concise question-answer pairs.${lang}`,
 
       const { data, error } = await supabase
         .from("flashcards")
-        .insert(rows)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert(rows as any)
         .select();
 
       if (error) throw error;
@@ -276,7 +278,8 @@ Generate challenging but fair questions that test understanding of key concepts.
 
       const { data, error } = await supabase
         .from("quizzes")
-        .insert(row)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert(row as any)
         .select()
         .single();
 
