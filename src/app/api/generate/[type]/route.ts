@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
 import { getSampleContext, getSampleContextForDocuments } from "@/lib/langchain/rag-chain";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const maxDuration = 60;
 
@@ -67,7 +68,7 @@ function langInstruction(locale: string): string {
 
 /** Resolve a list of documentIds from either a documentId or groupId. */
 async function resolveDocumentIds(
-  supabase: ReturnType<typeof createServerClient>,
+  supabase: SupabaseClient,
   documentId?: string,
   groupId?: string
 ): Promise<string[]> {
@@ -90,6 +91,13 @@ export async function POST(
   const { type } = await params;
 
   try {
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { documentId, groupId, locale = "en" } = await req.json();
 
     if (!documentId && !groupId) {
@@ -106,7 +114,6 @@ export async function POST(
       );
     }
 
-    const supabase = createServerClient();
     const isGroup = Boolean(groupId);
 
     // --- Cache check ---
@@ -170,9 +177,9 @@ export async function POST(
           { status: 422 }
         );
       }
-      context = await getSampleContextForDocuments(docIds);
+      context = await getSampleContextForDocuments(docIds, undefined, user.id);
     } else {
-      context = await getSampleContext(documentId);
+      context = await getSampleContext(documentId, undefined, user.id);
     }
 
     if (!context) {

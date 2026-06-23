@@ -145,6 +145,14 @@ export default function FileUploader() {
 
     const supabase = createBrowserClient();
 
+    // Get the authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setGlobalError("You must be signed in to upload files.");
+      setGlobalStatus("error");
+      return;
+    }
+
     // Create a group if uploading more than one file
     let groupId: string | null = null;
     if (entries.length > 1) {
@@ -166,7 +174,7 @@ export default function FileUploader() {
 
     // Upload + process each file (in parallel)
     const results = await Promise.allSettled(
-      entries.map((entry) => uploadOne(entry, groupId, supabase, updateEntry))
+      entries.map((entry) => uploadOne(entry, groupId, user.id, supabase, updateEntry))
     );
 
     const allDocumentIds = results
@@ -350,6 +358,7 @@ function FileRow({
 async function uploadOne(
   entry: FileEntry,
   groupId: string | null,
+  userId: string,
   supabase: ReturnType<typeof createBrowserClient>,
   update: (id: string, patch: Partial<FileEntry>) => void
 ): Promise<string> {
@@ -365,6 +374,7 @@ async function uploadOne(
       file_type: entry.fileType,
       status: "processing",
       chunk_count: 0,
+      user_id: userId,
     };
     if (groupId) insertData.group_id = groupId;
 

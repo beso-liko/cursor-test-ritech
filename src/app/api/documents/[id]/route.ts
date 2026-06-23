@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { deleteDocumentVectors } from "@/lib/langchain/embedder";
 
 export async function GET(
@@ -8,7 +9,13 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { data, error } = await supabase
       .from("documents")
       .select("*")
@@ -32,9 +39,15 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+    const admin = createAdminClient();
 
-    // Get document to find file path
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get document to find file path (RLS ensures it belongs to the user)
     const { data: doc } = await supabase
       .from("documents")
       .select("file_url")
@@ -44,10 +57,10 @@ export async function DELETE(
     // Delete vectors from Pinecone
     await deleteDocumentVectors(id).catch(console.error);
 
-    // Delete file from Supabase Storage
+    // Delete file from Supabase Storage (admin client needed for storage ops)
     if (doc?.file_url) {
       const path = doc.file_url.split("/").slice(-1)[0];
-      await supabase.storage.from("documents").remove([path]);
+      await admin.storage.from("documents").remove([path]);
     }
 
     // Delete document record (cascades to summaries, flashcards, quizzes, chat)

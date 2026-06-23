@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
 import { deleteDocumentVectors } from "@/lib/langchain/embedder";
 
 export async function GET(
@@ -8,7 +8,12 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const [{ data: group }, { data: documents }] = await Promise.all([
       supabase.from("document_groups").select("*").eq("id", id).single(),
@@ -36,22 +41,27 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+    const admin = createAdminClient();
 
-    // Fetch all documents in the group
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fetch all documents in the group (RLS ensures group belongs to user)
     const { data: docs } = await supabase
       .from("documents")
       .select("id, file_url")
       .eq("group_id", id);
 
     if (docs && docs.length > 0) {
-      // Delete vectors and storage files for each document
       await Promise.allSettled(
         docs.map(async (doc: { id: string; file_url: string | null }) => {
           await deleteDocumentVectors(doc.id).catch(console.error);
           if (doc.file_url) {
             const path = doc.file_url.split("/").slice(-1)[0];
-            await supabase.storage.from("documents").remove([path]);
+            await admin.storage.from("documents").remove([path]);
           }
         })
       );

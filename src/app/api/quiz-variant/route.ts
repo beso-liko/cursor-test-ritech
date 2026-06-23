@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
 import type { QuizQuestion } from "@/lib/supabase/types";
 
 /** Fisher-Yates unbiased shuffle */
@@ -28,7 +28,6 @@ function shuffleAnswers(q: QuizQuestion): QuizQuestion {
  *
  * Draws a fresh 9-question variant from the stored 18-question pool:
  *   3 easy + 3 medium + 3 hard, in a randomised order, with shuffled answer positions.
- * Returns the same Quiz shape so the client needs no changes beyond calling this endpoint.
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -39,7 +38,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { data: quiz, error } = await supabase
       .from("quizzes")
       .select("*")
@@ -62,7 +67,6 @@ export async function GET(req: NextRequest) {
       ...pickRandom(hard,   Math.min(3, hard.length)),
     ];
 
-    // Shuffle the combined 9 so difficulty groups aren't always in the same order
     const questions = fisherYates(selected).map(shuffleAnswers);
 
     return NextResponse.json({ ...quiz, questions });

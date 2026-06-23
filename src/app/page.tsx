@@ -1,11 +1,11 @@
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
 import AppShell from "@/components/AppShell";
 import DashboardContent from "@/components/DashboardContent";
 import type { Document } from "@/lib/supabase/types";
 
 async function getStats() {
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
     const [
       { count: totalDocs },
       { count: totalFlashcards },
@@ -30,7 +30,7 @@ async function getStats() {
 
 async function getRecentDocuments(): Promise<Document[]> {
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
     const { data } = await supabase
       .from("documents")
       .select("*")

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -10,13 +10,31 @@ import {
   Brain,
   Zap,
   GraduationCap,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { useEffect, useState } from "react";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { t, locale, setLocale } = useLanguage();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email ?? null);
+    });
+  }, []);
+
+  const handleSignOut = async () => {
+    const supabase = createBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+  };
 
   const navItems = [
     {
@@ -163,13 +181,20 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Footer */}
+      {/* User + Sign out */}
       <div className="px-4 py-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-2 px-1 min-w-0">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-          <span className="text-xs text-muted-foreground">
-            {t("sidebar.footer")}
+          <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+            {userEmail ?? t("sidebar.footer")}
           </span>
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </aside>

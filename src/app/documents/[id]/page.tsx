@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import DocumentDetailContent from "@/components/DocumentDetailContent";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
 import type { Document, Summary, Flashcard, Quiz } from "@/lib/supabase/types";
 
 async function getDocumentData(id: string) {
-  const supabase = createServerClient();
+  const supabase = await createAuthClient();
 
   const [
     { data: doc },

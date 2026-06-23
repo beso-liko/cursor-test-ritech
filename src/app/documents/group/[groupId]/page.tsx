@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import GroupDetailContent from "@/components/GroupDetailContent";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
 import type {
   Document,
   DocumentGroup,
@@ -11,7 +11,7 @@ import type {
 } from "@/lib/supabase/types";
 
 async function getGroupData(groupId: string) {
-  const supabase = createServerClient();
+  const supabase = await createAuthClient();
 
   const [
     { data: group },

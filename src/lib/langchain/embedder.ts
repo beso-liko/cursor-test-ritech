@@ -5,7 +5,8 @@ import { getPineconeIndex } from "@/lib/pinecone";
 
 export async function embedAndStore(
   chunks: string[],
-  documentId: string
+  documentId: string,
+  userId: string
 ): Promise<number> {
   const embeddings = new OpenAIEmbeddings({
     model: "text-embedding-3-small",
@@ -17,7 +18,7 @@ export async function embedAndStore(
     (chunk, i) =>
       new Document({
         pageContent: chunk,
-        metadata: { documentId, chunkIndex: i },
+        metadata: { documentId, chunkIndex: i, userId },
       })
   );
 

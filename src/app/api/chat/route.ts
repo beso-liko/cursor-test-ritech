@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { retrieveContext, retrieveContextForDocuments } from "@/lib/langchain/rag-chain";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
@@ -16,12 +16,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const authClient = await createAuthClient();
+    const { data: { user } } = await authClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
     const userMessage = messages[messages.length - 1]?.content ?? "";
 
     let context: string;
 
     if (groupId) {
-      const supabase = createServerClient();
+      const supabase = createAdminClient();
       const { data: docs } = await supabase
         .from("documents")
         .select("id")
@@ -36,10 +42,10 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const contextDocs = await retrieveContextForDocuments(userMessage, docIds, 5);
+      const contextDocs = await retrieveContextForDocuments(userMessage, docIds, 5, user.id);
       context = contextDocs.map((d) => d.pageContent).join("\n\n---\n\n");
     } else {
-      const docs = await retrieveContext(userMessage, documentId, 5);
+      const docs = await retrieveContext(userMessage, documentId, 5, user.id);
       context = docs.map((d) => d.pageContent).join("\n\n---\n\n");
     }
 

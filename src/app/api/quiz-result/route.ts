@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,11 +12,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { data, error } = await supabase
       .from("quiz_results")
-      .insert({ quiz_id: quizId, score, total, answers })
+      .insert({ quiz_id: quizId, score, total, answers, user_id: user.id })
       .select()
       .single();
 
@@ -43,7 +48,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { data, error } = await supabase
       .from("quiz_results")
       .select("*")

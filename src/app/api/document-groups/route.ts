@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    const supabase = createServerClient();
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { data, error } = await supabase
       .from("document_groups")
       .select("*")
@@ -19,15 +25,21 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { name } = await req.json();
     if (!name || typeof name !== "string") {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
 
-    const supabase = createServerClient();
     const { data, error } = await supabase
       .from("document_groups")
-      .insert({ name: name.slice(0, 200) })
+      .insert({ name: name.slice(0, 200), user_id: user.id })
       .select()
       .single();
 

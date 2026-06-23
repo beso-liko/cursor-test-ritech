@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
 import { extractText } from "@/lib/extractors";
 import { splitText } from "@/lib/langchain/splitter";
 import { embedAndStore } from "@/lib/langchain/embedder";
@@ -18,7 +18,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = createServerClient();
+    // Authenticate the request
+    const authClient = await createAuthClient();
+    const { data: { user } } = await authClient.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Use admin client for storage + DB status updates
+    const supabase = createAdminClient();
 
     // Download file from Supabase Storage
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -67,8 +75,8 @@ export async function POST(req: NextRequest) {
     // Split into chunks
     const chunks = await splitText(rawText);
 
-    // Embed and store in Pinecone
-    const chunkCount = await embedAndStore(chunks, documentId);
+    // Embed and store in Pinecone (with userId for per-user filtering)
+    const chunkCount = await embedAndStore(chunks, documentId, user.id);
 
     // Update document status in Supabase
     await supabase
