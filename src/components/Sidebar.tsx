@@ -12,9 +12,12 @@ import {
   GraduationCap,
   LogOut,
   Settings,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useTheme } from "@/components/ThemeProvider";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -22,6 +25,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { t, locale, setLocale } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
 
@@ -167,6 +171,36 @@ export default function Sidebar() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Theme toggle */}
+      <div className="px-4 pb-2">
+        <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1">
+          <button
+            onClick={() => setTheme("light")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg transition-all",
+              theme === "light"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Sun className="w-3 h-3" />
+            {t("sidebar.theme.light")}
+          </button>
+          <button
+            onClick={() => setTheme("dark")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg transition-all",
+              theme === "dark"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Moon className="w-3 h-3" />
+            {t("sidebar.theme.dark")}
+          </button>
         </div>
       </div>
 

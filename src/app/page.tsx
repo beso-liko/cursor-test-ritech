@@ -42,15 +42,32 @@ async function getRecentDocuments(): Promise<Document[]> {
   }
 }
 
+async function getFirstName(): Promise<string | null> {
+  try {
+    const supabase = await createAuthClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase
+      .from("profiles")
+      .select("first_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    return data?.first_name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function DashboardPage() {
-  const [stats, recentDocs] = await Promise.all([
+  const [stats, recentDocs, firstName] = await Promise.all([
     getStats(),
     getRecentDocuments(),
+    getFirstName(),
   ]);
 
   return (
     <AppShell>
-      <DashboardContent stats={stats} recentDocs={recentDocs} />
+      <DashboardContent stats={stats} recentDocs={recentDocs} firstName={firstName} />
     </AppShell>
   );
 }

@@ -28,7 +28,13 @@ export default function LoginPage() {
     });
 
     if (authError) {
-      setError(authError.message);
+      const res = await fetch("/api/auth/check-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const { exists } = await res.json();
+      setError(exists ? "Invalid login credentials." : "This user does not exist.");
       setLoading(false);
       return;
     }

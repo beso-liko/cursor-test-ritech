@@ -24,11 +24,13 @@ interface DashboardContentProps {
     quizzesTaken: number;
   };
   recentDocs: Document[];
+  firstName?: string | null;
 }
 
 export default function DashboardContent({
   stats,
   recentDocs,
+  firstName,
 }: DashboardContentProps) {
   const { t } = useLanguage();
 
@@ -37,6 +39,11 @@ export default function DashboardContent({
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
+          {firstName && (
+            <p className="text-sm font-medium text-primary mb-1">
+              {t("dashboard.welcome", { name: firstName })}
+            </p>
+          )}
           <h1 className="text-2xl font-bold text-foreground">
             {t("dashboard.title")}
           </h1>

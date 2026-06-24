@@ -17,10 +17,13 @@ const en = {
   "sidebar.features.quizzes": "Auto Quizzes",
   "sidebar.nav.account": "Account Settings",
   "sidebar.nav.account.desc": "Profile & security",
+  "sidebar.theme.light": "Light",
+  "sidebar.theme.dark": "Dark",
   "sidebar.footer": "Powered by GPT-4o mini",
 
   // Dashboard
   "dashboard.title": "Dashboard",
+  "dashboard.welcome": "Welcome back, {name}!",
   "dashboard.subtitle": "Your AI-powered study workspace",
   "dashboard.upload": "Upload Document",
   "dashboard.stats.documents": "Documents",
@@ -243,10 +246,13 @@ const sq: typeof en = {
   "sidebar.features.quizzes": "Kuize Automatike",
   "sidebar.nav.account": "Cilësimet e Llogarisë",
   "sidebar.nav.account.desc": "Profili & siguria",
+  "sidebar.theme.light": "E Çelët",
+  "sidebar.theme.dark": "E Errët",
   "sidebar.footer": "Me fuqi nga GPT-4o mini",
 
   // Dashboard
   "dashboard.title": "Paneli",
+  "dashboard.welcome": "Mirë se u kthyet, {name}!",
   "dashboard.subtitle": "Hapësira juaj e studimit me AI",
   "dashboard.upload": "Ngarko Dokument",
   "dashboard.stats.documents": "Dokumentet",
