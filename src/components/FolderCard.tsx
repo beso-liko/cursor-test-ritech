@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
 import type { DocumentGroup } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface FolderCardProps {
   folder: DocumentGroup;
@@ -26,14 +27,17 @@ export default function FolderCard({
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { t, locale } = useLanguage();
 
-  const formattedDate = new Date(folder.created_at).toLocaleDateString("en-US", {
+  const dateLocale = locale === "sq" ? "sq-AL" : "en-US";
+  const formattedDate = new Date(folder.created_at).toLocaleDateString(dateLocale, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
-  const docLabel = docCount === 1 ? "1 document" : `${docCount} documents`;
+  const docLabel =
+    docCount === 1 ? t("folder.docs.one") : t("folder.docs.other", { n: docCount });
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -100,14 +104,14 @@ export default function FolderCard({
                       onClick={() => setRenameOpen(true)}
                     >
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                      Rename
+                      {t("folder.rename")}
                     </Menu.Item>
                     <Menu.Item
                       className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-destructive cursor-pointer select-none outline-none data-highlighted:bg-destructive/10"
                       onClick={() => setDeleteConfirmOpen(true)}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      Delete folder
+                      {t("folder.delete.action")}
                     </Menu.Item>
                   </Menu.Popup>
                 </Menu.Positioner>
@@ -122,8 +126,8 @@ export default function FolderCard({
         open={renameOpen}
         onOpenChange={setRenameOpen}
         initialName={folder.name}
-        title="Rename folder"
-        submitLabel="Save"
+        title={t("folder.dialog.rename.title")}
+        submitLabel={t("folder.dialog.rename.submit")}
         onSubmit={(newName) => onRename(folder.id, newName)}
       />
 
@@ -138,10 +142,10 @@ export default function FolderCard({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-semibold text-base text-foreground">
-              Delete &ldquo;{folder.name}&rdquo;?
+              {t("folder.delete.title", { name: folder.name })}
             </h3>
             <p className="text-sm text-muted-foreground mt-2">
-              The folder will be removed. Documents inside will not be deleted — they will appear as unfiled.
+              {t("folder.delete.desc")}
             </p>
             <div className="flex gap-2 justify-end mt-5">
               <Button
@@ -150,7 +154,7 @@ export default function FolderCard({
                 onClick={() => setDeleteConfirmOpen(false)}
                 disabled={deleting}
               >
-                Cancel
+                {t("folder.delete.cancel")}
               </Button>
               <Button
                 variant="destructive"
@@ -158,7 +162,7 @@ export default function FolderCard({
                 onClick={handleDelete}
                 disabled={deleting}
               >
-                {deleting ? "Deleting…" : "Delete folder"}
+                {deleting ? t("folder.deleting") : t("folder.delete.confirm")}
               </Button>
             </div>
           </div>

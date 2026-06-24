@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface CreateFolderDialogProps {
   open: boolean;
@@ -34,6 +35,7 @@ export default function CreateFolderDialog({
   const [name, setName] = useState(initialName);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useLanguage();
 
   // Sync when dialog is reopened with a different initialName
   useEffect(() => {
@@ -68,14 +70,14 @@ export default function CreateFolderDialog({
 
           <div className="py-4">
             <Label htmlFor="folder-name" className="text-sm font-medium mb-1.5 block">
-              Folder name
+              {t("folder.dialog.name.label")}
             </Label>
             <Input
               id="folder-name"
               ref={inputRef}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Biology, Exam Prep…"
+              placeholder={t("folder.dialog.name.placeholder")}
               maxLength={200}
               autoComplete="off"
             />
@@ -88,7 +90,7 @@ export default function CreateFolderDialog({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              Cancel
+              {t("folder.dialog.cancel")}
             </Button>
             <Button type="submit" disabled={!name.trim() || loading}>
               {loading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}

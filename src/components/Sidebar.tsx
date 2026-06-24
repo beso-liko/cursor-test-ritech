@@ -68,9 +68,9 @@ export default function Sidebar() {
     },
     {
       href: "/account-settings",
-      label: "Account Settings",
+      label: t("sidebar.nav.account"),
       icon: Settings,
-      description: "Profile & security",
+      description: t("sidebar.nav.account.desc"),
     },
   ];
 

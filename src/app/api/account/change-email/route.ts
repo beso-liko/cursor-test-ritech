@@ -20,7 +20,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "New email must differ from current email" }, { status: 400 });
     }
 
-    const { error } = await supabase.auth.updateUser({ email: trimmed });
+    const origin = new URL(req.url).origin;
+    const emailRedirectTo = `${origin}/auth/callback`;
+
+    const { error } = await supabase.auth.updateUser(
+      { email: trimmed },
+      { emailRedirectTo }
+    );
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

@@ -20,6 +20,7 @@ import {
 import { User, Mail, Lock, Trash2, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Status = { type: "success" | "error"; message: string } | null;
 
@@ -46,6 +47,7 @@ function StatusMessage({ status }: { status: Status }) {
 
 export default function AccountSettingsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   // Profile
   const [firstName, setFirstName] = useState("");
@@ -90,10 +92,10 @@ export default function AccountSettingsPage() {
         body: JSON.stringify({ first_name: firstName, last_name: lastName }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to save");
-      setProfileStatus({ type: "success", message: "Profile saved successfully." });
+      if (!res.ok) throw new Error(data.error ?? t("account.profile.error"));
+      setProfileStatus({ type: "success", message: t("account.profile.saved") });
     } catch (err) {
-      setProfileStatus({ type: "error", message: err instanceof Error ? err.message : "Failed to save profile." });
+      setProfileStatus({ type: "error", message: err instanceof Error ? err.message : t("account.profile.error") });
     } finally {
       setProfileLoading(false);
     }
@@ -110,11 +112,11 @@ export default function AccountSettingsPage() {
         body: JSON.stringify({ email: newEmail }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to update email");
-      setEmailStatus({ type: "success", message: "Confirmation email sent. Check your inbox to verify the new address." });
+      if (!res.ok) throw new Error(data.error ?? t("account.email.error"));
+      setEmailStatus({ type: "success", message: t("account.email.sent", { old: currentEmail, new: newEmail }) });
       setNewEmail("");
     } catch (err) {
-      setEmailStatus({ type: "error", message: err instanceof Error ? err.message : "Failed to update email." });
+      setEmailStatus({ type: "error", message: err instanceof Error ? err.message : t("account.email.error") });
     } finally {
       setEmailLoading(false);
     }
@@ -124,11 +126,11 @@ export default function AccountSettingsPage() {
     e.preventDefault();
     setPasswordStatus(null);
     if (newPassword !== confirmPassword) {
-      setPasswordStatus({ type: "error", message: "Passwords do not match." });
+      setPasswordStatus({ type: "error", message: t("account.password.mismatch") });
       return;
     }
     if (newPassword.length < 6) {
-      setPasswordStatus({ type: "error", message: "Password must be at least 6 characters." });
+      setPasswordStatus({ type: "error", message: t("account.password.short") });
       return;
     }
     setPasswordLoading(true);
@@ -139,12 +141,12 @@ export default function AccountSettingsPage() {
         body: JSON.stringify({ password: newPassword }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to update password");
-      setPasswordStatus({ type: "success", message: "Password updated successfully." });
+      if (!res.ok) throw new Error(data.error ?? t("account.password.error"));
+      setPasswordStatus({ type: "success", message: t("account.password.updated") });
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setPasswordStatus({ type: "error", message: err instanceof Error ? err.message : "Failed to update password." });
+      setPasswordStatus({ type: "error", message: err instanceof Error ? err.message : t("account.password.error") });
     } finally {
       setPasswordLoading(false);
     }
@@ -175,10 +177,10 @@ export default function AccountSettingsPage() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Dashboard
+            {t("account.back")}
           </Link>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Account Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your profile and account security.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">{t("account.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("account.subtitle")}</p>
         </div>
 
         {/* Profile section */}
@@ -188,15 +190,15 @@ export default function AccountSettingsPage() {
               <User className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Profile</h2>
-              <p className="text-xs text-muted-foreground">Optional display name shown in the sidebar.</p>
+              <h2 className="text-sm font-semibold text-foreground">{t("account.profile.title")}</h2>
+              <p className="text-xs text-muted-foreground">{t("account.profile.desc")}</p>
             </div>
           </div>
 
           <form onSubmit={handleSaveProfile} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="firstName" className="text-xs font-medium">First Name</Label>
+                <Label htmlFor="firstName" className="text-xs font-medium">{t("account.profile.firstName")}</Label>
                 <Input
                   id="firstName"
                   placeholder="e.g. Alex"
@@ -206,7 +208,7 @@ export default function AccountSettingsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lastName" className="text-xs font-medium">Last Name</Label>
+                <Label htmlFor="lastName" className="text-xs font-medium">{t("account.profile.lastName")}</Label>
                 <Input
                   id="lastName"
                   placeholder="e.g. Smith"
@@ -218,7 +220,7 @@ export default function AccountSettingsPage() {
             </div>
             <StatusMessage status={profileStatus} />
             <Button type="submit" disabled={profileLoading} size="sm">
-              {profileLoading ? "Saving…" : "Save Profile"}
+              {profileLoading ? t("account.profile.saving") : t("account.profile.save")}
             </Button>
           </form>
         </section>
@@ -230,16 +232,16 @@ export default function AccountSettingsPage() {
               <Mail className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Change Email</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("account.email.title")}</h2>
               <p className="text-xs text-muted-foreground">
-                Current: <span className="text-foreground font-medium">{currentEmail || "—"}</span>
+                {t("account.email.current")} <span className="text-foreground font-medium">{currentEmail || "—"}</span>
               </p>
             </div>
           </div>
 
           <form onSubmit={handleChangeEmail} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="newEmail" className="text-xs font-medium">New Email Address</Label>
+              <Label htmlFor="newEmail" className="text-xs font-medium">{t("account.email.newLabel")}</Label>
               <Input
                 id="newEmail"
                 type="email"
@@ -251,7 +253,7 @@ export default function AccountSettingsPage() {
             </div>
             <StatusMessage status={emailStatus} />
             <Button type="submit" disabled={emailLoading || !newEmail} size="sm">
-              {emailLoading ? "Sending…" : "Update Email"}
+              {emailLoading ? t("account.email.sending") : t("account.email.submit")}
             </Button>
           </form>
         </section>
@@ -263,14 +265,14 @@ export default function AccountSettingsPage() {
               <Lock className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Change Password</h2>
-              <p className="text-xs text-muted-foreground">Minimum 6 characters.</p>
+              <h2 className="text-sm font-semibold text-foreground">{t("account.password.title")}</h2>
+              <p className="text-xs text-muted-foreground">{t("account.password.desc")}</p>
             </div>
           </div>
 
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="newPassword" className="text-xs font-medium">New Password</Label>
+              <Label htmlFor="newPassword" className="text-xs font-medium">{t("account.password.new")}</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -282,7 +284,7 @@ export default function AccountSettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-xs font-medium">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-xs font-medium">{t("account.password.confirm")}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -295,7 +297,7 @@ export default function AccountSettingsPage() {
             </div>
             <StatusMessage status={passwordStatus} />
             <Button type="submit" disabled={passwordLoading || !newPassword || !confirmPassword} size="sm">
-              {passwordLoading ? "Updating…" : "Update Password"}
+              {passwordLoading ? t("account.password.updating") : t("account.password.submit")}
             </Button>
           </form>
         </section>
@@ -307,9 +309,9 @@ export default function AccountSettingsPage() {
               <Trash2 className="w-4 h-4 text-destructive" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Delete Account</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("account.delete.title")}</h2>
               <p className="text-xs text-muted-foreground">
-                Permanently removes your account and all associated data. This cannot be undone.
+                {t("account.delete.desc")}
               </p>
             </div>
           </div>
@@ -318,26 +320,25 @@ export default function AccountSettingsPage() {
             <AlertDialogTrigger
               render={
                 <Button variant="destructive" size="sm" disabled={deleteLoading}>
-                  {deleteLoading ? "Deleting…" : "Delete My Account"}
+                  {deleteLoading ? t("account.delete.deleting") : t("account.delete.trigger")}
                 </Button>
               }
             />
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                <AlertDialogTitle>{t("account.delete.dialog.title")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  All your documents, flashcards, quizzes, and chat history will be permanently deleted.
-                  This action cannot be undone.
+                  {t("account.delete.dialog.desc")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("account.delete.dialog.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
                   onClick={handleDeleteAccount}
                   disabled={deleteLoading}
                 >
-                  {deleteLoading ? "Deleting…" : "Yes, delete my account"}
+                  {deleteLoading ? t("account.delete.deleting") : t("account.delete.dialog.confirm")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

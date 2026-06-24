@@ -61,6 +61,11 @@ export default function DocumentsPage() {
       ? t("documents.count.one")
       : t("documents.count.other", { n: totalCount });
 
+  const folderCountLabel =
+    folders.length === 1
+      ? t("folder.count.one")
+      : t("folder.count.other", { n: folders.length });
+
   // --- Handlers ---
   const handleDelete = async (id: string) => {
     if (!confirm(t("documents.delete.confirm"))) return;
@@ -121,7 +126,7 @@ export default function DocumentsPage() {
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {folders.length > 0
-                ? `${folders.length} folder${folders.length === 1 ? "" : "s"} · ${docCountLabel}`
+                ? `${folderCountLabel} · ${docCountLabel}`
                 : docCountLabel}
             </p>
           </div>
@@ -132,7 +137,7 @@ export default function DocumentsPage() {
               onClick={() => setCreateFolderOpen(true)}
             >
               <FolderPlus className="w-4 h-4" />
-              New Folder
+              {t("folder.new")}
             </Button>
             <Button nativeButton={false} render={<Link href="/upload" />} className="gap-2">
               <Upload className="w-4 h-4" />
@@ -148,7 +153,7 @@ export default function DocumentsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search folders and documents…"
+              placeholder={t("folder.search")}
               className="pl-9"
             />
           </div>
@@ -178,7 +183,7 @@ export default function DocumentsPage() {
                 onClick={() => setCreateFolderOpen(true)}
               >
                 <FolderPlus className="w-4 h-4" />
-                New Folder
+                {t("folder.new")}
               </Button>
               <Button nativeButton={false} render={<Link href="/upload" />} className="gap-2">
                 <Upload className="w-4 h-4" />
@@ -198,7 +203,7 @@ export default function DocumentsPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <Folder className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                    Folders
+                    {t("folder.section.folders")}
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -221,7 +226,7 @@ export default function DocumentsPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <FileText className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                    {folders.length > 0 ? "Unfiled documents" : "Documents"}
+                    {folders.length > 0 ? t("folder.section.unfiled") : t("folder.section.all")}
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -245,8 +250,8 @@ export default function DocumentsPage() {
       <CreateFolderDialog
         open={createFolderOpen}
         onOpenChange={setCreateFolderOpen}
-        title="New folder"
-        submitLabel="Create"
+        title={t("folder.dialog.new.title")}
+        submitLabel={t("folder.dialog.new.submit")}
         onSubmit={handleCreateFolder}
       />
     </AppShell>

@@ -1,0 +1,43 @@
+---
+description: Keep English and Albanian translations in sync whenever translation keys are added, removed, or changed
+globs: src/lib/i18n/translations.ts
+alwaysApply: false
+---
+
+# i18n Translation Sync
+
+Translations live in `src/lib/i18n/translations.ts` as two objects — `en` and `sq` — that share the same TypeScript type (`typeof en`). Every key that exists in `en` **must** also exist in `sq` with a proper Albanian translation, and vice versa.
+
+## Rules
+
+- When **adding** a new translation key, add it to **both** `en` and `sq`.
+- When **removing** a key, remove it from **both** locales.
+- When **renaming** a key, rename it in **both** locales.
+- When **changing** English copy, review whether the Albanian copy needs to be updated to stay semantically equivalent.
+- Preserve the section comment structure (e.g. `// Sidebar`, `// Dashboard`) in both objects.
+
+## Example
+
+```ts
+// ✅ GOOD — key present in both locales
+const en = {
+  "nav.home": "Home",
+};
+const sq: typeof en = {
+  "nav.home": "Kryefaqja",
+};
+
+// ❌ BAD — key missing from sq
+const en = {
+  "nav.home": "Home",
+  "nav.profile": "Profile",   // added here…
+};
+const sq: typeof en = {
+  "nav.home": "Kryefaqja",
+  // …but forgot to add "nav.profile" in Albanian
+};
+```
+
+## Interpolation placeholders
+
+Keep all `{placeholder}` tokens (e.g. `{n}`, `{max}`, `{date}`) identical in both locales — only translate the surrounding text.

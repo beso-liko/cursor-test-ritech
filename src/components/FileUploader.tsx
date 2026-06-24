@@ -233,7 +233,7 @@ export default function FileUploader() {
                 {t("uploader.drop")}{" "}
                 <span className="text-primary">{t("uploader.browse")}</span>
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 text-center px-6">
                 {t("uploader.formats", { max: MAX_SIZE_MB })}
               </p>
             </>
