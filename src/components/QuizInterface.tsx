@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, CheckCircle, XCircle, Trophy, RotateCcw, Loader2, ClipboardList } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, CheckCircle, XCircle, Trophy, RotateCcw, Loader2, ClipboardList, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -11,51 +11,37 @@ import type { Quiz, QuizQuestion } from "@/lib/supabase/types";
 import { useLanguage } from "@/components/LanguageProvider";
 
 interface QuizInterfaceProps {
-  documentId?: string;
-  groupId?: string;
-  initialQuiz?: Quiz | null;
+  quiz: Quiz | null;
+  isLoading: boolean;
+  timedOut: boolean;
+  onRegenerate: () => void;
 }
 
 type QuizPhase = "idle" | "active" | "result";
 
 export default function QuizInterface({
-  documentId,
-  groupId,
-  initialQuiz,
+  quiz: initialQuiz,
+  isLoading,
+  timedOut,
+  onRegenerate,
 }: QuizInterfaceProps) {
-  const { t, locale } = useLanguage();
-  const [quiz, setQuiz] = useState<Quiz | null>(initialQuiz ?? null);
+  const { t } = useLanguage();
+  const [quiz, setQuiz] = useState<Quiz | null>(initialQuiz);
   const [phase, setPhase] = useState<QuizPhase>("idle");
   const [currentQ, setCurrentQ] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answers, setAnswers] = useState<number[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [retakeLoading, setRetakeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
 
-  const generate = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const body = groupId ? { groupId, locale } : { documentId, locale };
-      const res = await fetch("/api/generate/quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Failed to generate quiz");
-      const result: Quiz = await res.json();
-      setQuiz(result);
-      setPhase("active");
-      setCurrentQ(0);
-      setAnswers([]);
-      setSelected(null);
-    } catch {
-      setError(t("quiz.error"));
-    } finally {
-      setLoading(false);
+  // Sync when the parent delivers a new quiz (first generation or regeneration)
+  useEffect(() => {
+    if (initialQuiz) {
+      setQuiz(initialQuiz);
+      setPhase("idle");
     }
-  };
+  }, [initialQuiz]);
 
   const startQuiz = () => {
     setPhase("active");
@@ -67,7 +53,7 @@ export default function QuizInterface({
 
   const retake = async () => {
     if (!quiz) return;
-    setLoading(true);
+    setRetakeLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/quiz-variant?quizId=${quiz.id}`);
@@ -82,7 +68,7 @@ export default function QuizInterface({
     } catch {
       setError(t("quiz.error"));
     } finally {
-      setLoading(false);
+      setRetakeLoading(false);
     }
   };
 
@@ -122,7 +108,8 @@ export default function QuizInterface({
     }
   };
 
-  if (loading) {
+  // --- Loading state ---
+  if ((isLoading && !quiz) || retakeLoading) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -139,6 +126,7 @@ export default function QuizInterface({
     );
   }
 
+  // --- No quiz yet ---
   if (!quiz) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
@@ -152,14 +140,17 @@ export default function QuizInterface({
           </p>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button onClick={generate} className="gap-2">
-          <Sparkles className="w-4 h-4" />
-          {t("quiz.generate")}
-        </Button>
+        {timedOut && (
+          <Button onClick={onRegenerate} variant="outline" className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            {t("quiz.generate")}
+          </Button>
+        )}
       </div>
     );
   }
 
+  // --- Quiz ready (idle) ---
   if (phase === "idle") {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
@@ -172,13 +163,30 @@ export default function QuizInterface({
             {t("quiz.ready.questions", { n: quiz.questions.length })}
           </p>
         </div>
-        <Button onClick={startQuiz} className="gap-2">
-          {t("quiz.start")}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={startQuiz} className="gap-2">
+            {t("quiz.start")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground text-xs"
+            onClick={onRegenerate}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            {t("quiz.generate")}
+          </Button>
+        </div>
       </div>
     );
   }
 
+  // --- Results screen ---
   if (phase === "result") {
     const score = answers.filter(
       (ans, i) => ans === quiz.questions[i].correct
@@ -253,7 +261,7 @@ export default function QuizInterface({
     );
   }
 
-  // Active quiz
+  // --- Active quiz ---
   const question = quiz.questions[currentQ];
   const progress = (currentQ / quiz.questions.length) * 100;
 

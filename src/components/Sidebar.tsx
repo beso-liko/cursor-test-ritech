@@ -11,6 +11,7 @@ import {
   Zap,
   GraduationCap,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -22,12 +23,22 @@ export default function Sidebar() {
   const router = useRouter();
   const { t, locale, setLocale } = useLanguage();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createBrowserClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserEmail(user?.email ?? null);
     });
+    fetch("/api/account")
+      .then((r) => r.json())
+      .then((data) => {
+        const first = data.first_name?.trim() ?? "";
+        const last = data.last_name?.trim() ?? "";
+        const full = [first, last].filter(Boolean).join(" ");
+        setDisplayName(full || null);
+      })
+      .catch(() => {});
   }, []);
 
   const handleSignOut = async () => {
@@ -54,6 +65,12 @@ export default function Sidebar() {
       label: t("sidebar.nav.upload"),
       icon: Upload,
       description: t("sidebar.nav.upload.desc"),
+    },
+    {
+      href: "/account-settings",
+      label: "Account Settings",
+      icon: Settings,
+      description: "Profile & security",
     },
   ];
 
@@ -186,7 +203,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2 px-1 min-w-0">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-            {userEmail ?? t("sidebar.footer")}
+            {displayName ?? userEmail ?? t("sidebar.footer")}
           </span>
           <button
             onClick={handleSignOut}

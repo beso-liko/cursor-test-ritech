@@ -12,11 +12,14 @@ import { useLanguage } from "@/components/LanguageProvider";
 interface ChatInterfaceProps {
   documentId?: string;
   groupId?: string;
+  /** Pre-fetched messages from the server — restores the previous conversation. */
+  initialMessages?: Message[];
 }
 
-export default function ChatInterface({ documentId, groupId }: ChatInterfaceProps) {
+export default function ChatInterface({ documentId, groupId, initialMessages }: ChatInterfaceProps) {
   const { t, locale } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const prevLoadingRef = useRef(false);
 
   const chatBody = groupId ? { groupId, locale } : { documentId, locale };
 
@@ -24,11 +27,30 @@ export default function ChatInterface({ documentId, groupId }: ChatInterfaceProp
     useChat({
       api: "/api/chat",
       body: chatBody,
+      initialMessages: initialMessages ?? [],
     });
 
+  // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Save conversation to DB whenever the AI finishes a response
+  useEffect(() => {
+    const justFinished = prevLoadingRef.current && !isLoading;
+    prevLoadingRef.current = isLoading;
+
+    if (justFinished && messages.length > 0) {
+      const key = groupId ? { groupId } : { documentId };
+      // Persist only id, role, content — enough to restore the conversation
+      const storable = messages.map(({ id, role, content }) => ({ id, role, content }));
+      fetch("/api/chat-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...key, messages: storable }),
+      }).catch(console.error);
+    }
+  }, [isLoading, messages, documentId, groupId]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

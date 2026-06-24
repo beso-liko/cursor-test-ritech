@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
-import { deleteDocumentVectors } from "@/lib/langchain/embedder";
+import { createAuthClient } from "@/lib/supabase/server";
 
 export async function GET(
   _req: NextRequest,
@@ -35,6 +34,39 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const supabase = await createAuthClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { name } = await req.json();
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return NextResponse.json({ error: "name is required" }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from("document_groups")
+      .update({ name: name.trim().slice(0, 200) })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error("Document group PATCH error:", err);
+    return NextResponse.json({ error: "Failed to rename folder" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,32 +74,20 @@ export async function DELETE(
   const { id } = await params;
   try {
     const supabase = await createAuthClient();
-    const admin = createAdminClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch all documents in the group (RLS ensures group belongs to user)
-    const { data: docs } = await supabase
+    // Unlink all documents from the folder (keep them as unfiled)
+    await supabase
       .from("documents")
-      .select("id, file_url")
+      .update({ group_id: null })
       .eq("group_id", id);
 
-    if (docs && docs.length > 0) {
-      await Promise.allSettled(
-        docs.map(async (doc: { id: string; file_url: string | null }) => {
-          await deleteDocumentVectors(doc.id).catch(console.error);
-          if (doc.file_url) {
-            const path = doc.file_url.split("/").slice(-1)[0];
-            await admin.storage.from("documents").remove([path]);
-          }
-        })
-      );
-    }
-
-    // Delete the group (cascades to documents → summaries/flashcards/quizzes)
+    // Delete the folder row — cascades to group-level summaries, flashcards,
+    // quizzes, and chat sessions but leaves the individual documents intact.
     const { error } = await supabase
       .from("document_groups")
       .delete()
@@ -77,6 +97,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Document group DELETE error:", err);
-    return NextResponse.json({ error: "Failed to delete group" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete folder" }, { status: 500 });
   }
 }

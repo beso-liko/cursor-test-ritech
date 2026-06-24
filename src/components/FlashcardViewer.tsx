@@ -8,6 +8,7 @@ import {
   Sparkles,
   Layers,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,44 +18,21 @@ import type { Flashcard } from "@/lib/supabase/types";
 import { useLanguage } from "@/components/LanguageProvider";
 
 interface FlashcardViewerProps {
-  documentId?: string;
-  groupId?: string;
-  initialCards?: Flashcard[];
+  cards: Flashcard[];
+  isLoading: boolean;
+  timedOut: boolean;
+  onRegenerate: () => void;
 }
 
 export default function FlashcardViewer({
-  documentId,
-  groupId,
-  initialCards,
+  cards,
+  isLoading,
+  timedOut,
+  onRegenerate,
 }: FlashcardViewerProps) {
-  const { t, locale } = useLanguage();
-  const [cards, setCards] = useState<Flashcard[]>(initialCards ?? []);
+  const { t } = useLanguage();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const generate = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const body = groupId ? { groupId, locale } : { documentId, locale };
-      const res = await fetch("/api/generate/flashcards", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Failed to generate flashcards");
-      const result: Flashcard[] = await res.json();
-      setCards(result);
-      setIndex(0);
-      setFlipped(false);
-    } catch {
-      setError(t("flashcards.error"));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const prev = () => {
     setFlipped(false);
@@ -66,7 +44,7 @@ export default function FlashcardViewer({
     setTimeout(() => setIndex((i) => Math.min(cards.length - 1, i + 1)), 150);
   };
 
-  if (loading) {
+  if (isLoading && cards.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -92,11 +70,12 @@ export default function FlashcardViewer({
             {t("flashcards.empty.desc")}
           </p>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button onClick={generate} className="gap-2">
-          <Sparkles className="w-4 h-4" />
-          {t("flashcards.generate")}
-        </Button>
+        {timedOut && (
+          <Button onClick={onRegenerate} variant="outline" className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            {t("flashcards.generate")}
+          </Button>
+        )}
       </div>
     );
   }
@@ -110,15 +89,31 @@ export default function FlashcardViewer({
         <Badge variant="outline" className="text-xs">
           {index + 1} / {cards.length}
         </Badge>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs gap-1.5 text-muted-foreground"
-          onClick={() => { setIndex(0); setFlipped(false); }}
-        >
-          <RotateCcw className="w-3 h-3" />
-          {t("flashcards.restart")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs gap-1.5 text-muted-foreground"
+            onClick={() => { setIndex(0); setFlipped(false); }}
+          >
+            <RotateCcw className="w-3 h-3" />
+            {t("flashcards.restart")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs gap-1.5 text-muted-foreground"
+            onClick={onRegenerate}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            {t("flashcards.generate")}
+          </Button>
+        </div>
       </div>
 
       {/* Flashcard flip */}

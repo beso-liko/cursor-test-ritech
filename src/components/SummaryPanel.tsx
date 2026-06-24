@@ -1,16 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Sparkles, BookOpen, List, Tag } from "lucide-react";
+import { Loader2, Sparkles, BookOpen, List, Tag, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/components/LanguageProvider";
-
-interface SummaryData {
-  id: string;
-  content: string;
-}
+import type { Summary } from "@/lib/supabase/types";
 
 interface ParsedSummary {
   summary: string;
@@ -27,42 +22,21 @@ function parseSummaryContent(content: string): ParsedSummary {
 }
 
 interface SummaryPanelProps {
-  documentId?: string;
-  groupId?: string;
-  initialData?: SummaryData | null;
+  summary: Summary | null;
+  isLoading: boolean;
+  timedOut: boolean;
+  onRegenerate: () => void;
 }
 
 export default function SummaryPanel({
-  documentId,
-  groupId,
-  initialData,
+  summary,
+  isLoading,
+  timedOut,
+  onRegenerate,
 }: SummaryPanelProps) {
-  const { t, locale } = useLanguage();
-  const [data, setData] = useState<SummaryData | null>(initialData ?? null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { t } = useLanguage();
 
-  const generate = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const body = groupId ? { groupId, locale } : { documentId, locale };
-      const res = await fetch("/api/generate/summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Failed to generate summary");
-      const result = await res.json();
-      setData(result);
-    } catch {
-      setError(t("summary.error"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading && !summary) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -77,7 +51,7 @@ export default function SummaryPanel({
     );
   }
 
-  if (!data) {
+  if (!summary) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -91,16 +65,17 @@ export default function SummaryPanel({
             {t("summary.empty.desc")}
           </p>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button onClick={generate} className="gap-2">
-          <Sparkles className="w-4 h-4" />
-          {t("summary.generate")}
-        </Button>
+        {timedOut && (
+          <Button onClick={onRegenerate} variant="outline" className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            {t("summary.generate")}
+          </Button>
+        )}
       </div>
     );
   }
 
-  const parsed = parseSummaryContent(data.content);
+  const parsed = parseSummaryContent(summary.content);
 
   return (
     <div className="space-y-6">
@@ -157,6 +132,24 @@ export default function SummaryPanel({
           </div>
         </div>
       )}
+
+      {/* Regenerate */}
+      <div className="pt-2 border-t border-border/40">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground text-xs"
+          onClick={onRegenerate}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <Sparkles className="w-3 h-3" />
+          )}
+          {t("summary.generate")}
+        </Button>
+      </div>
     </div>
   );
 }

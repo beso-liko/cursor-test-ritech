@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, FileImage, Presentation, File, Image, Trash2, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import {
+  FileText, FileImage, Presentation, File, Image, Trash2,
+  CheckCircle, Clock, AlertCircle, MoreHorizontal, FolderInput, FolderMinus,
+} from "lucide-react";
+import { Menu } from "@base-ui/react/menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Document } from "@/lib/supabase/types";
+import type { Document, DocumentGroup } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -22,9 +26,18 @@ const fileIcons = {
 interface DocumentCardProps {
   document: Document;
   onDelete?: (id: string) => void;
+  /** Available folders for the "Move to folder" action */
+  folders?: DocumentGroup[];
+  /** Called after a successful move or unfile */
+  onMove?: (docId: string, groupId: string | null) => void;
 }
 
-export default function DocumentCard({ document: doc, onDelete }: DocumentCardProps) {
+export default function DocumentCard({
+  document: doc,
+  onDelete,
+  folders,
+  onMove,
+}: DocumentCardProps) {
   const { t, locale } = useLanguage();
 
   const statusConfig = {
@@ -44,6 +57,19 @@ export default function DocumentCard({ document: doc, onDelete }: DocumentCardPr
     day: "numeric",
     year: "numeric",
   });
+
+  const hasFolderActions = (folders && folders.length > 0) || doc.group_id;
+  const showMenu = hasFolderActions || onDelete;
+
+  const handleMove = async (groupId: string | null) => {
+    if (!onMove) return;
+    await fetch(`/api/documents/${doc.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupId }),
+    });
+    onMove(doc.id, groupId);
+  };
 
   return (
     <Card className="group shadow-none border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200">
@@ -77,16 +103,95 @@ export default function DocumentCard({ document: doc, onDelete }: DocumentCardPr
             </div>
             <p className="text-xs text-muted-foreground mt-1.5">{formattedDate}</p>
           </div>
-          {onDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 text-muted-foreground hover:text-destructive"
-              onClick={() => onDelete(doc.id)}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
+
+          {/* Action area — shown on hover */}
+          <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {showMenu && (
+              <Menu.Root>
+                <Menu.Trigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground"
+                    />
+                  }
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </Menu.Trigger>
+                <Menu.Portal>
+                  <Menu.Positioner sideOffset={4} alignment="end">
+                    <Menu.Popup
+                      className={cn(
+                        "z-50 min-w-[180px] origin-[var(--transform-origin)] rounded-xl border border-border bg-popover p-1 shadow-md outline-none",
+                        "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
+                        "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
+                      )}
+                    >
+                      {/* Move-to-folder items */}
+                      {folders && folders.length > 0 && (
+                        <>
+                          <div className="px-3 py-1 text-xs font-medium text-muted-foreground">
+                            Move to folder
+                          </div>
+                          {folders.map((folder) => (
+                            <Menu.Item
+                              key={folder.id}
+                              disabled={doc.group_id === folder.id}
+                              className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-foreground cursor-pointer select-none outline-none data-highlighted:bg-accent data-disabled:opacity-40 data-disabled:cursor-default"
+                              onClick={() => handleMove(folder.id)}
+                            >
+                              <FolderInput className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span className="truncate">{folder.name}</span>
+                            </Menu.Item>
+                          ))}
+                        </>
+                      )}
+
+                      {/* Remove from folder */}
+                      {doc.group_id && (
+                        <Menu.Item
+                          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-foreground cursor-pointer select-none outline-none data-highlighted:bg-accent"
+                          onClick={() => handleMove(null)}
+                        >
+                          <FolderMinus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          Remove from folder
+                        </Menu.Item>
+                      )}
+
+                      {/* Delete */}
+                      {onDelete && (
+                        <>
+                          {(hasFolderActions) && (
+                            <div className="my-1 h-px bg-border mx-1" />
+                          )}
+                          <Menu.Item
+                            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-destructive cursor-pointer select-none outline-none data-highlighted:bg-destructive/10"
+                            onClick={() => onDelete(doc.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                            Delete
+                          </Menu.Item>
+                        </>
+                      )}
+                    </Menu.Popup>
+                  </Menu.Positioner>
+                </Menu.Portal>
+              </Menu.Root>
+            )}
+
+            {/* Fallback: plain delete button when no menu needed */}
+            {!showMenu && onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={() => onDelete(doc.id)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

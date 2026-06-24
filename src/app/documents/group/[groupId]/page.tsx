@@ -9,6 +9,7 @@ import type {
   Flashcard,
   Quiz,
 } from "@/lib/supabase/types";
+import type { Message } from "ai";
 
 async function getGroupData(groupId: string) {
   const supabase = await createAuthClient();
@@ -19,6 +20,7 @@ async function getGroupData(groupId: string) {
     { data: summary },
     { data: flashcards },
     { data: quiz },
+    { data: chatSession },
   ] = await Promise.all([
     supabase.from("document_groups").select("*").eq("id", groupId).single(),
     supabase
@@ -29,6 +31,7 @@ async function getGroupData(groupId: string) {
     supabase.from("summaries").select("*").eq("group_id", groupId).single(),
     supabase.from("flashcards").select("*").eq("group_id", groupId),
     supabase.from("quizzes").select("*").eq("group_id", groupId).single(),
+    supabase.from("chat_sessions").select("messages").eq("group_id", groupId).single(),
   ]);
 
   return {
@@ -37,6 +40,7 @@ async function getGroupData(groupId: string) {
     summary: summary as Summary | null,
     flashcards: (flashcards as Flashcard[]) ?? [],
     quiz: quiz as Quiz | null,
+    initialMessages: (chatSession?.messages as Message[]) ?? [],
   };
 }
 
@@ -46,7 +50,7 @@ export default async function GroupDetailPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const { group, documents, summary, flashcards, quiz } =
+  const { group, documents, summary, flashcards, quiz, initialMessages } =
     await getGroupData(groupId);
 
   if (!group) notFound();
@@ -59,6 +63,7 @@ export default async function GroupDetailPage({
         summary={summary}
         flashcards={flashcards}
         quiz={quiz}
+        initialMessages={initialMessages}
       />
     </AppShell>
   );

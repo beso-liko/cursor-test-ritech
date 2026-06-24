@@ -29,8 +29,10 @@ import type {
   Flashcard,
   Quiz,
 } from "@/lib/supabase/types";
+import type { Message } from "ai";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useParallelGenerate } from "@/hooks/useParallelGenerate";
 
 const fileIcons = {
   pdf: { icon: FileText, color: "text-red-500 bg-red-50" },
@@ -48,6 +50,7 @@ interface GroupDetailContentProps {
   summary: Summary | null;
   flashcards: Flashcard[];
   quiz: Quiz | null;
+  initialMessages?: Message[];
 }
 
 export default function GroupDetailContent({
@@ -56,8 +59,17 @@ export default function GroupDetailContent({
   summary,
   flashcards,
   quiz,
+  initialMessages,
 }: GroupDetailContentProps) {
   const { t, locale } = useLanguage();
+
+  const generate = useParallelGenerate({
+    groupId: group.id,
+    locale,
+    initialSummary: summary,
+    initialFlashcards: flashcards,
+    initialQuiz: quiz,
+  });
 
   const statusConfig = {
     ready: {
@@ -217,9 +229,9 @@ export default function GroupDetailContent({
             </TabsTrigger>
             <TabsTrigger value="flashcards" className="text-sm">
               {t("document.tab.flashcards")}
-              {flashcards.length > 0 && (
+              {(generate.flashcards.data?.length ?? 0) > 0 && (
                 <Badge variant="secondary" className="ml-1.5 text-xs h-4 px-1.5">
-                  {flashcards.length}
+                  {generate.flashcards.data!.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -234,7 +246,12 @@ export default function GroupDetailContent({
           <TabsContent value="summary">
             <Card className="shadow-none border-border/60">
               <CardContent className="p-6">
-                <SummaryPanel groupId={group.id} initialData={summary} />
+                <SummaryPanel
+                  summary={generate.summary.data}
+                  isLoading={generate.summary.isLoading}
+                  timedOut={generate.summary.timedOut}
+                  onRegenerate={generate.summary.startGenerate}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -242,7 +259,12 @@ export default function GroupDetailContent({
           <TabsContent value="flashcards">
             <Card className="shadow-none border-border/60">
               <CardContent className="p-6">
-                <FlashcardViewer groupId={group.id} initialCards={flashcards} />
+                <FlashcardViewer
+                  cards={generate.flashcards.data ?? []}
+                  isLoading={generate.flashcards.isLoading}
+                  timedOut={generate.flashcards.timedOut}
+                  onRegenerate={generate.flashcards.startGenerate}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -250,7 +272,12 @@ export default function GroupDetailContent({
           <TabsContent value="quiz">
             <Card className="shadow-none border-border/60">
               <CardContent className="p-6">
-                <QuizInterface groupId={group.id} initialQuiz={quiz} />
+                <QuizInterface
+                  quiz={generate.quiz.data}
+                  isLoading={generate.quiz.isLoading}
+                  timedOut={generate.quiz.timedOut}
+                  onRegenerate={generate.quiz.startGenerate}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -258,7 +285,7 @@ export default function GroupDetailContent({
           <TabsContent value="chat">
             <Card className="shadow-none border-border/60">
               <CardContent className="p-6">
-                <ChatInterface groupId={group.id} />
+                <ChatInterface groupId={group.id} initialMessages={initialMessages} />
               </CardContent>
             </Card>
           </TabsContent>
