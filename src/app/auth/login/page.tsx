@@ -22,18 +22,29 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = createBrowserClient();
-    const [{ error: authError }, checkRes] = await Promise.all([
-      supabase.auth.signInWithPassword({ email, password }),
-      fetch("/api/auth/check-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      }),
-    ]);
+
+    // Both start simultaneously — check-user resolves faster than a failed login
+    const loginPromise = supabase.auth.signInWithPassword({ email, password });
+    const checkPromise = fetch("/api/auth/check-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).then((r) => r.json() as Promise<{ exists: boolean }>);
+
+    // Resolve the fast check first
+    const { exists } = await checkPromise;
+
+    if (!exists) {
+      setError("This user does not exist.");
+      setLoading(false);
+      return;
+    }
+
+    // Email is registered — wait for the login result
+    const { error: authError } = await loginPromise;
 
     if (authError) {
-      const { exists } = await checkRes.json();
-      setError(exists ? "Invalid login credentials." : "This user does not exist.");
+      setError("Invalid login credentials.");
       setLoading(false);
       return;
     }
