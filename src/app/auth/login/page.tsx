@@ -89,7 +89,7 @@ export default function LoginPage() {
             <GraduationCap className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
-            StudyAI
+            StudyBuddy
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Welcome back — sign in to continue
