@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { GraduationCap, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,26 +16,68 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Silently pre-fetch whether the email is registered when the user
+  // moves from the email field to the password field, so the result is
+  // ready the moment a login attempt fails (no extra round-trip delay).
+  const emailExistsRef = useRef<{ email: string; exists: boolean } | null>(null);
+
+  const handleEmailBlur = async () => {
+    if (!email) return;
+    try {
+      const res = await fetch("/api/auth/check-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const { exists } = await res.json();
+      emailExistsRef.current = { email, exists };
+    } catch {
+      emailExistsRef.current = null;
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
+    try {
+      const supabase = createBrowserClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (!res.ok) {
-      setError(data.error ?? "An unexpected error occurred.");
+      if (authError) {
+        // Use the pre-fetched result if it matches the current email,
+        // otherwise fall back to fetching now.
+        let exists: boolean;
+        if (emailExistsRef.current?.email === email) {
+          exists = emailExistsRef.current.exists;
+        } else {
+          try {
+            const res = await fetch("/api/auth/check-user", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
+            });
+            exists = (await res.json()).exists ?? false;
+          } catch {
+            exists = true; // safe fallback — don't wrongly say user doesn't exist
+          }
+        }
+
+        setError(exists ? "Invalid login credentials." : "This user does not exist.");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
       setLoading(false);
-      return;
     }
-
-    router.push("/");
-    router.refresh();
   };
 
   return (
@@ -63,6 +106,7 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={handleEmailBlur}
               required
               autoComplete="email"
             />
