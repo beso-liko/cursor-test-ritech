@@ -120,7 +120,7 @@ export default function DocumentCard({
                   <MoreHorizontal className="w-3.5 h-3.5" />
                 </Menu.Trigger>
                 <Menu.Portal>
-                  <Menu.Positioner sideOffset={4} alignment="end">
+                  <Menu.Positioner sideOffset={4} align="end">
                     <Menu.Popup
                       className={cn(
                         "z-50 min-w-[180px] origin-[var(--transform-origin)] rounded-xl border border-border bg-popover p-1 shadow-md outline-none",
