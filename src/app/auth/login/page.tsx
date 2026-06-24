@@ -22,18 +22,17 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = createBrowserClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (authError) {
-      const res = await fetch("/api/auth/check-user", {
+    const [{ error: authError }, checkRes] = await Promise.all([
+      supabase.auth.signInWithPassword({ email, password }),
+      fetch("/api/auth/check-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
-      });
-      const { exists } = await res.json();
+      }),
+    ]);
+
+    if (authError) {
+      const { exists } = await checkRes.json();
       setError(exists ? "Invalid login credentials." : "This user does not exist.");
       setLoading(false);
       return;
