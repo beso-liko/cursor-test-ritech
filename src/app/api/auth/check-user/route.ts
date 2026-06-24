@@ -11,15 +11,20 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = createAdminClient();
-    const { data, error } = await admin.rpc("check_email_exists", {
-      email_input: email,
+    const { data, error } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
     });
 
     if (error) {
       return NextResponse.json({ exists: false });
     }
 
-    return NextResponse.json({ exists: Boolean(data) });
+    const exists = data.users.some(
+      (u) => u.email?.toLowerCase() === email
+    );
+
+    return NextResponse.json({ exists });
   } catch {
     return NextResponse.json({ exists: false });
   }
