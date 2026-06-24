@@ -59,7 +59,7 @@ export default function DocumentCard({
   });
 
   const hasFolderActions = (folders && folders.length > 0) || doc.group_id;
-  const showMenu = hasFolderActions || onDelete;
+  const showMenu = !!hasFolderActions;
 
   const handleMove = async (groupId: string | null) => {
     if (!onMove) return;
