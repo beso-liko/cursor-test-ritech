@@ -7,7 +7,6 @@ import { GraduationCap, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,30 +20,15 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const supabase = createBrowserClient();
-
-    // Both start simultaneously — check-user resolves faster than a failed login
-    const loginPromise = supabase.auth.signInWithPassword({ email, password });
-    const checkPromise = fetch("/api/auth/check-user", {
+    const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    }).then((r) => r.json() as Promise<{ exists: boolean }>);
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
 
-    // Resolve the fast check first
-    const { exists } = await checkPromise;
-
-    if (!exists) {
-      setError("This user does not exist.");
-      setLoading(false);
-      return;
-    }
-
-    // Email is registered — wait for the login result
-    const { error: authError } = await loginPromise;
-
-    if (authError) {
-      setError("Invalid login credentials.");
+    if (!res.ok) {
+      setError(data.error ?? "An unexpected error occurred.");
       setLoading(false);
       return;
     }
