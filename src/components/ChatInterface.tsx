@@ -21,6 +21,11 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLoadingRef = useRef(false);
 
+  // Refs so cleanup and event handlers always have fresh values without re-registering effects
+  const messagesRef = useRef<Message[]>(initialMessages ?? []);
+  const isLoadingRef = useRef(false);
+  const prevCountRef = useRef((initialMessages ?? []).length);
+
   const chatBody = groupId ? { groupId, locale } : { documentId, locale };
 
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
@@ -30,27 +35,75 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
       initialMessages: initialMessages ?? [],
     });
 
+  // Keep refs in sync
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+
   // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Save conversation to DB whenever the AI finishes a response
+  // Layer 1 — save the user message immediately when sent, before the AI replies.
+  // This ensures the user's question is persisted even if they navigate away during generation.
+  useEffect(() => {
+    if (messages.length > prevCountRef.current) {
+      const lastMsg = messages[messages.length - 1];
+      prevCountRef.current = messages.length;
+      if (lastMsg?.role === "user") {
+        const key = groupId ? { groupId } : { documentId };
+        const storable = messages.map(({ id, role, content }) => ({ id, role, content }));
+        fetch("/api/chat-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...key, messages: storable }),
+          keepalive: true,
+        }).catch(console.error);
+      }
+    }
+  }, [messages, documentId, groupId]);
+
+  // Layer 2 — save the full exchange once the AI finishes streaming.
   useEffect(() => {
     const justFinished = prevLoadingRef.current && !isLoading;
     prevLoadingRef.current = isLoading;
 
     if (justFinished && messages.length > 0) {
       const key = groupId ? { groupId } : { documentId };
-      // Persist only id, role, content — enough to restore the conversation
       const storable = messages.map(({ id, role, content }) => ({ id, role, content }));
       fetch("/api/chat-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...key, messages: storable }),
+        keepalive: true,
       }).catch(console.error);
     }
   }, [isLoading, messages, documentId, groupId]);
+
+  // Layer 3 — save on unmount (full page navigation).
+  // keepalive: true lets the request complete even after the page starts unloading.
+  // If the AI was mid-stream, strip the incomplete assistant message so only
+  // finished exchanges are stored (the user message was already saved by Layer 1).
+  useEffect(() => {
+    return () => {
+      let msgs = messagesRef.current;
+      if (msgs.length === 0) return;
+      if (isLoadingRef.current && msgs[msgs.length - 1]?.role === "assistant") {
+        msgs = msgs.slice(0, -1);
+      }
+      if (msgs.length === 0) return;
+      const key = groupId ? { groupId } : { documentId };
+      const storable = msgs.map(({ id, role, content }) => ({ id, role, content }));
+      fetch("/api/chat-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...key, messages: storable }),
+        keepalive: true,
+      }).catch(console.error);
+    };
+  // documentId / groupId are stable for the lifetime of this component instance
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

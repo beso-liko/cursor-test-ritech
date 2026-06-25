@@ -1,5 +1,5 @@
 export type DocumentStatus = "processing" | "ready" | "error";
-export type FileType = "pdf" | "docx" | "pptx" | "txt" | "png" | "jpg" | "jpeg" | "heic" | "heif" | "dng" | "raw";
+export type FileType = "pdf" | "docx" | "pptx" | "txt" | "png" | "jpg" | "jpeg" | "heic" | "heif";
 
 export interface DocumentGroup {
   id: string;

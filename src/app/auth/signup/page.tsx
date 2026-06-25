@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBrowserClient } from "@/lib/supabase/client";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
+import { useLanguage } from "@/components/LanguageProvider";
+import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { locale, setLocale, t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -24,15 +27,32 @@ export default function SignupPage() {
     setError(null);
 
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError(t("auth.signup.error.passwordMismatch"));
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t("auth.signup.error.passwordShort"));
       return;
     }
 
     setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/check-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const { exists } = await res.json();
+      if (exists) {
+        setError(t("auth.signup.error.emailExists"));
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // If the check fails, proceed and let Supabase handle it
+    }
+
     const supabase = createBrowserClient();
     const { data, error: authError } = await supabase.auth.signUp({
       email,
@@ -60,25 +80,54 @@ export default function SignupPage() {
     setLoading(false);
   };
 
+  const languageSwitcher = (
+    <div className="absolute top-4 right-4">
+      <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1">
+        <button
+          onClick={() => setLocale("en")}
+          className={cn(
+            "px-3 text-xs font-semibold py-1.5 rounded-lg transition-all",
+            locale === "en"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+            )}
+        >
+          EN
+        </button>
+        <button
+          onClick={() => setLocale("sq")}
+          className={cn(
+            "px-3 text-xs font-semibold py-1.5 rounded-lg transition-all",
+            locale === "sq"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          SQ
+        </button>
+      </div>
+    </div>
+  );
+
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        {languageSwitcher}
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="flex justify-center">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-emerald-500" />
             </div>
           </div>
-          <h2 className="text-xl font-bold text-foreground">Check your email</h2>
+          <h2 className="text-xl font-bold text-foreground">{t("auth.signup.success.title")}</h2>
           <p className="text-sm text-muted-foreground">
-            We sent a confirmation link to <strong>{email}</strong>. Click the
-            link to activate your account.
+            {t("auth.signup.success.desc", { email })}
           </p>
           <Link
             href="/auth/login"
             className="text-sm text-primary font-medium hover:underline"
           >
-            Back to login
+            {t("auth.signup.success.backToLogin")}
           </Link>
         </div>
       </div>
@@ -87,6 +136,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      {languageSwitcher}
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="flex flex-col items-center mb-8">
@@ -97,26 +147,26 @@ export default function SignupPage() {
             StudyBuddy
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Create an account to get started
+            {t("auth.signup.subtitle")}
           </p>
         </div>
 
         {/* Google sign-up */}
-        <GoogleSignInButton label="Continue with Google" />
+        <GoogleSignInButton label={t("auth.google")} />
 
         <div className="relative my-2">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs text-muted-foreground">
-            <span className="bg-background px-2">or continue with email</span>
+            <span className="bg-background px-2">{t("auth.signup.orEmail")}</span>
           </div>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.signup.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -129,7 +179,7 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("auth.signup.password")}</Label>
             <Input
               id="password"
               type="password"
@@ -142,7 +192,7 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="confirm">Confirm password</Label>
+            <Label htmlFor="confirm">{t("auth.signup.confirmPassword")}</Label>
             <Input
               id="confirm"
               type="password"
@@ -165,21 +215,21 @@ export default function SignupPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating account…
+                {t("auth.signup.submitting")}
               </>
             ) : (
-              "Create account"
+              t("auth.signup.submit")
             )}
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Already have an account?{" "}
+          {t("auth.signup.hasAccount")}{" "}
           <Link
             href="/auth/login"
             className="text-primary font-medium hover:underline"
           >
-            Sign in
+            {t("auth.signup.signIn")}
           </Link>
         </p>
       </div>

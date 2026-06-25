@@ -27,27 +27,14 @@ const ACCEPTED_TYPES: Record<string, string> = {
   "image/jpeg": "jpeg",
   "image/heic": "heic",
   "image/heif": "heif",
-  "image/x-adobe-dng": "dng",
-  "image/dng": "dng",
-  "image/x-raw": "raw",
 };
 
 const EXTENSION_MAP: Record<string, string> = {
   heic: "heic",
   heif: "heif",
-  dng: "dng",
-  raw: "raw",
-  cr2: "raw",
-  cr3: "raw",
-  nef: "raw",
-  arw: "raw",
-  orf: "raw",
-  rw2: "raw",
-  raf: "raw",
-  pef: "raw",
 };
 
-const IMAGE_TYPES = new Set(["png", "jpg", "jpeg", "heic", "heif", "dng", "raw"]);
+const IMAGE_TYPES = new Set(["png", "jpg", "jpeg", "heic", "heif"]);
 
 const MAX_SIZE_MB = 20;
 
@@ -242,7 +229,7 @@ export default function FileUploader() {
             id="file-input"
             type="file"
             multiple
-            accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.heic,.heif,.dng,.raw,.cr2,.cr3,.nef,.arw,.orf,.rw2,.raf,.pef"
+            accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.heic,.heif"
             className="hidden"
             onChange={onInputChange}
           />

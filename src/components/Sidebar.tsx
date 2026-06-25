@@ -197,7 +197,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg transition-all",
               theme === "light"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -209,7 +209,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg transition-all",
               theme === "dark"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -227,7 +227,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             className={cn(
               "flex-1 text-xs font-semibold py-1.5 rounded-lg transition-all",
               locale === "en"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -238,7 +238,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             className={cn(
               "flex-1 text-xs font-semibold py-1.5 rounded-lg transition-all",
               locale === "sq"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >

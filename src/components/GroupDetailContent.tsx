@@ -282,7 +282,7 @@ export default function GroupDetailContent({
             </Card>
           </TabsContent>
 
-          <TabsContent value="chat">
+          <TabsContent value="chat" keepMounted>
             <Card className="shadow-none border-border/60">
               <CardContent className="p-4 md:p-6">
                 <ChatInterface groupId={group.id} initialMessages={initialMessages} />

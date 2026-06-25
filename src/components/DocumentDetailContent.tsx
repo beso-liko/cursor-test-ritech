@@ -230,7 +230,7 @@ export default function DocumentDetailContent({
             </Card>
           </TabsContent>
 
-          <TabsContent value="chat">
+          <TabsContent value="chat" keepMounted>
             <Card className="shadow-none border-border/60">
               <CardContent className="p-4 md:p-6">
                 <ChatInterface documentId={doc.id} initialMessages={initialMessages} />

@@ -44,7 +44,7 @@ const en = {
   // Upload Page
   "upload.title": "Upload Document",
   "upload.subtitle":
-    "Supported: PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF, DNG, RAW — up to 20MB",
+    "Supported: PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF — up to 20MB",
   "upload.whatNext": "What happens next",
   "upload.feature.instant.title": "Instant Processing",
   "upload.feature.instant.desc": "Text is extracted and indexed in seconds",
@@ -92,10 +92,10 @@ const en = {
   "uploader.drop": "Drop your files here, or",
   "uploader.browse": "browse",
   "uploader.formats":
-    "PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF, DNG, RAW — up to {max}MB each",
+    "PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF — up to {max}MB each",
   "uploader.addMore": "Add more files",
   "uploader.error.type":
-    "Unsupported file type. Please upload PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF, DNG, or RAW.",
+    "Unsupported file type. Please upload PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, or HEIF.",
   "uploader.error.size": "File too large. Maximum size is {max}MB.",
   "uploader.status.uploading": "Uploading file…",
   "uploader.status.processing": "Extracting and indexing…",
@@ -190,6 +190,36 @@ const en = {
   "folder.delete.confirm": "Delete folder",
   "folder.deleting": "Deleting…",
 
+  // Auth pages
+  "auth.login.subtitle": "Welcome back — sign in to continue",
+  "auth.login.orEmail": "or continue with email",
+  "auth.login.email": "Email",
+  "auth.login.password": "Password",
+  "auth.login.forgotPassword": "Forgot password?",
+  "auth.login.submit": "Sign in",
+  "auth.login.submitting": "Signing in…",
+  "auth.login.noAccount": "Don't have an account?",
+  "auth.login.signUp": "Sign up",
+  "auth.login.error.invalidCredentials": "Invalid login credentials.",
+  "auth.login.error.noUser": "This user does not exist.",
+  "auth.login.error.unexpected": "An unexpected error occurred. Please try again.",
+  "auth.signup.subtitle": "Create an account to get started",
+  "auth.signup.orEmail": "or continue with email",
+  "auth.signup.email": "Email",
+  "auth.signup.password": "Password",
+  "auth.signup.confirmPassword": "Confirm password",
+  "auth.signup.submit": "Create account",
+  "auth.signup.submitting": "Creating account…",
+  "auth.signup.hasAccount": "Already have an account?",
+  "auth.signup.signIn": "Sign in",
+  "auth.signup.error.passwordMismatch": "Passwords do not match.",
+  "auth.signup.error.passwordShort": "Password must be at least 6 characters.",
+  "auth.signup.error.emailExists": "An account with that email already exists.",
+  "auth.signup.success.title": "Check your email",
+  "auth.signup.success.desc": "We sent a confirmation link to {email}. Click the link to activate your account.",
+  "auth.signup.success.backToLogin": "Back to login",
+  "auth.google": "Continue with Google",
+
   // Account Settings
   "account.back": "Back to Dashboard",
   "account.title": "Account Settings",
@@ -273,7 +303,7 @@ const sq: typeof en = {
   // Upload Page
   "upload.title": "Ngarko Dokument",
   "upload.subtitle":
-    "Mbështet: PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF, DNG, RAW — deri në 20MB",
+    "Mbështet: PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF — deri në 20MB",
   "upload.whatNext": "Çfarë ndodh më pas",
   "upload.feature.instant.title": "Përpunim i Menjëhershëm",
   "upload.feature.instant.desc":
@@ -323,10 +353,10 @@ const sq: typeof en = {
   "uploader.drop": "Hidhni skedarët këtu, ose",
   "uploader.browse": "shfletoni",
   "uploader.formats":
-    "PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF, DNG, RAW — deri në {max}MB secili",
+    "PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF — deri në {max}MB secili",
   "uploader.addMore": "Shtoni më shumë skedarë",
   "uploader.error.type":
-    "Lloji i skedarit nuk mbështetet. Ngarkoni PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, HEIF, DNG ose RAW.",
+    "Lloji i skedarit nuk mbështetet. Ngarkoni PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC ose HEIF.",
   "uploader.error.size": "Skedari është shumë i madh. Madhësia maksimale është {max}MB.",
   "uploader.status.uploading": "Duke ngarkuar skedarin…",
   "uploader.status.processing": "Duke ekstraktuar dhe indeksuar…",
@@ -421,6 +451,36 @@ const sq: typeof en = {
   "folder.delete.cancel": "Anulo",
   "folder.delete.confirm": "Fshi dosjen",
   "folder.deleting": "Duke fshirë…",
+
+  // Auth pages
+  "auth.login.subtitle": "Mirë se u kthyet — hyni për të vazhduar",
+  "auth.login.orEmail": "ose vazhdoni me email",
+  "auth.login.email": "Email",
+  "auth.login.password": "Fjalëkalimi",
+  "auth.login.forgotPassword": "Keni harruar fjalëkalimin?",
+  "auth.login.submit": "Hyni",
+  "auth.login.submitting": "Duke hyrë…",
+  "auth.login.noAccount": "Nuk keni llogari?",
+  "auth.login.signUp": "Regjistrohu",
+  "auth.login.error.invalidCredentials": "Kredencialet e hyrjes janë të pavlefshme.",
+  "auth.login.error.noUser": "Ky përdorues nuk ekziston.",
+  "auth.login.error.unexpected": "Ndodhi një gabim i papritur. Ju lutemi provoni sërish.",
+  "auth.signup.subtitle": "Krijoni një llogari për të filluar",
+  "auth.signup.orEmail": "ose vazhdoni me email",
+  "auth.signup.email": "Email",
+  "auth.signup.password": "Fjalëkalimi",
+  "auth.signup.confirmPassword": "Konfirmo fjalëkalimin",
+  "auth.signup.submit": "Krijo llogarinë",
+  "auth.signup.submitting": "Duke krijuar llogarinë…",
+  "auth.signup.hasAccount": "Keni tashmë një llogari?",
+  "auth.signup.signIn": "Hyni",
+  "auth.signup.error.passwordMismatch": "Fjalëkalimet nuk përputhen.",
+  "auth.signup.error.passwordShort": "Fjalëkalimi duhet të ketë të paktën 6 karaktere.",
+  "auth.signup.error.emailExists": "Një llogari me këtë email ekziston tashmë.",
+  "auth.signup.success.title": "Kontrolloni email-in tuaj",
+  "auth.signup.success.desc": "Dërguam një lidhje konfirmimi tek {email}. Klikoni lidhjen për të aktivizuar llogarinë tuaj.",
+  "auth.signup.success.backToLogin": "Kthehu tek hyrja",
+  "auth.google": "Vazhdo me Google",
 
   // Account Settings
   "account.back": "Kthehu te Paneli",

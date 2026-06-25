@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBrowserClient } from "@/lib/supabase/client";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
+import { useLanguage } from "@/components/LanguageProvider";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { locale, setLocale, t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,7 +71,7 @@ export default function LoginPage() {
           }
         }
 
-        setError(exists ? "Invalid login credentials." : "This user does not exist.");
+        setError(exists ? t("auth.login.error.invalidCredentials") : t("auth.login.error.noUser"));
         setLoading(false);
         return;
       }
@@ -76,13 +79,41 @@ export default function LoginPage() {
       router.push("/");
       router.refresh();
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError(t("auth.login.error.unexpected"));
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      {/* Language switcher */}
+      <div className="absolute top-4 right-4">
+        <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1">
+          <button
+            onClick={() => setLocale("en")}
+            className={cn(
+              "px-3 text-xs font-semibold py-1.5 rounded-lg transition-all",
+              locale === "en"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            EN
+          </button>
+          <button
+            onClick={() => setLocale("sq")}
+            className={cn(
+              "px-3 text-xs font-semibold py-1.5 rounded-lg transition-all",
+              locale === "sq"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            SQ
+          </button>
+        </div>
+      </div>
+
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="flex flex-col items-center mb-8">
@@ -93,26 +124,26 @@ export default function LoginPage() {
             StudyBuddy
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Welcome back — sign in to continue
+            {t("auth.login.subtitle")}
           </p>
         </div>
 
         {/* Google sign-in */}
-        <GoogleSignInButton label="Continue with Google" />
+        <GoogleSignInButton label={t("auth.google")} />
 
         <div className="relative my-2">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs text-muted-foreground">
-            <span className="bg-background px-2">or continue with email</span>
+            <span className="bg-background px-2">{t("auth.login.orEmail")}</span>
           </div>
         </div>
 
         {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.login.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -127,12 +158,12 @@ export default function LoginPage() {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("auth.login.password")}</Label>
               <Link
                 href="/auth/forgot-password"
                 className="text-xs text-primary hover:underline"
               >
-                Forgot password?
+                {t("auth.login.forgotPassword")}
               </Link>
             </div>
             <Input
@@ -157,21 +188,21 @@ export default function LoginPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Signing in…
+                {t("auth.login.submitting")}
               </>
             ) : (
-              "Sign in"
+              t("auth.login.submit")
             )}
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Don&apos;t have an account?{" "}
+          {t("auth.login.noAccount")}{" "}
           <Link
             href="/auth/signup"
             className="text-primary font-medium hover:underline"
           >
-            Sign up
+            {t("auth.login.signUp")}
           </Link>
         </p>
       </div>

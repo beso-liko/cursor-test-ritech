@@ -23,8 +23,6 @@ export async function extractText(
     case "jpeg":
     case "heic":
     case "heif":
-    case "dng":
-    case "raw":
       return extractImageText(buffer, fileType);
     default:
       throw new Error(`Unsupported file type: ${fileType}`);
