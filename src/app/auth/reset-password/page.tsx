@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { GraduationCap, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,22 +9,7 @@ import { Label } from "@/components/ui/label";
 import { createBrowserClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      }
-    >
-      <ResetPasswordForm />
-    </Suspense>
-  );
-}
-
-function ResetPasswordForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [ready, setReady] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
@@ -33,26 +18,19 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Exchange the one-time code from the email link for a live session.
-  // This must happen client-side so the PKCE verifier (stored in the
-  // same browser that requested the reset) is available.
+  // The /auth/callback route already exchanged the code and established a
+  // session before redirecting here. We just verify the session is present.
   useEffect(() => {
-    const code = searchParams.get("code");
-
-    if (!code) {
-      setSessionError("Invalid or expired reset link. Please request a new one.");
-      setReady(true);
-      return;
-    }
-
     const supabase = createBrowserClient();
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) {
-        setSessionError("This reset link has expired or already been used. Please request a new one.");
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        setSessionError(
+          "Invalid or expired reset link. Please request a new one."
+        );
       }
       setReady(true);
     });
-  }, [searchParams]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +50,9 @@ function ResetPasswordForm() {
 
     try {
       const supabase = createBrowserClient();
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+      });
 
       if (updateError) {
         setError(updateError.message);
