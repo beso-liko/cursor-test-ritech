@@ -40,8 +40,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth pages
-  if (user && isAuthRoute) {
+  // Redirect authenticated users away from auth pages (except reset-password,
+  // which is reached while already authenticated after the callback exchange)
+  if (user && isAuthRoute && pathname !== "/auth/reset-password") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
