@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBrowserClient } from "@/lib/supabase/client";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -98,6 +99,18 @@ export default function SignupPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Create an account to get started
           </p>
+        </div>
+
+        {/* Google sign-up */}
+        <GoogleSignInButton label="Continue with Google" />
+
+        <div className="relative my-2">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs text-muted-foreground">
+            <span className="bg-background px-2">or continue with email</span>
+          </div>
         </div>
 
         {/* Form */}
