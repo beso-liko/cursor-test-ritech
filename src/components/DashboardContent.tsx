@@ -35,7 +35,7 @@ export default function DashboardContent({
   const { t } = useLanguage();
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>

@@ -68,7 +68,7 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
   ];
 
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className="flex flex-col h-[480px] md:h-[600px]">
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 pr-4">
         {messages.length === 0 ? (

@@ -60,7 +60,7 @@
   --secondary: oklch(0.94 0.025 70);
   --secondary-foreground: oklch(0.30 0.04 55);
   --muted: oklch(0.93 0.015 75);
-  --muted-foreground: oklch(0.52 0.04 60);
+  --muted-foreground: oklch(0.42 0.04 60);
   --accent: oklch(0.93 0.025 60);
   --accent-foreground: oklch(0.28 0.06 50);
   --destructive: oklch(0.577 0.245 27.325);
@@ -84,37 +84,71 @@
 }
 
 .dark {
-  --background: oklch(0.18 0.010 55);
-  --foreground: oklch(0.88 0.014 72);
-  --card: oklch(0.22 0.012 55);
-  --card-foreground: oklch(0.88 0.014 72);
-  --popover: oklch(0.22 0.012 55);
-  --popover-foreground: oklch(0.88 0.014 72);
-  --primary: oklch(0.72 0.20 42);
-  --primary-foreground: oklch(0.18 0.010 55);
-  --secondary: oklch(0.27 0.014 55);
-  --secondary-foreground: oklch(0.85 0.012 70);
-  --muted: oklch(0.26 0.012 55);
-  --muted-foreground: oklch(0.64 0.030 65);
-  --accent: oklch(0.28 0.016 55);
-  --accent-foreground: oklch(0.88 0.014 72);
+  /* Page canvas — near black with a cool-neutral tint */
+  --background: oklch(0.08 0.008 265);
+  --foreground: oklch(0.95 0.006 240);
+
+  /* Cards — +0.10 lift, clearly elevated above the page */
+  --card: oklch(0.18 0.012 265);
+  --card-foreground: oklch(0.95 0.006 240);
+
+  /* Popovers/menus — +0.07 above card so they visibly float */
+  --popover: oklch(0.25 0.014 265);
+  --popover-foreground: oklch(0.95 0.006 240);
+
+  /* Primary — warm amber-orange, pops against cool dark surfaces */
+  --primary: oklch(0.74 0.20 42);
+  --primary-foreground: oklch(0.08 0.008 265);
+
+  /* Secondary — interactive chips/tags */
+  --secondary: oklch(0.28 0.014 265);
+  --secondary-foreground: oklch(0.88 0.008 240);
+
+  /* Muted — subtle in-card tinting */
+  --muted: oklch(0.22 0.010 265);
+  /* Muted text — noticeably dimmer than body text for clear hierarchy */
+  --muted-foreground: oklch(0.67 0.016 240);
+
+  /* Accent — hover/active overlay */
+  --accent: oklch(0.26 0.014 265);
+  --accent-foreground: oklch(0.95 0.006 240);
+
   --destructive: oklch(0.65 0.200 22);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.72 0.20 42);
-  --chart-1: oklch(0.72 0.20 42);
+
+  /* Borders — 20% white; visible without being harsh */
+  --border: oklch(1 0 0 / 20%);
+  /* Input outlines — stronger so form fields read clearly */
+  --input: oklch(1 0 0 / 28%);
+  --ring: oklch(0.74 0.20 42);
+
+  --chart-1: oklch(0.74 0.20 42);
   --chart-2: oklch(0.75 0.16 65);
   --chart-3: oklch(0.70 0.15 145);
   --chart-4: oklch(0.62 0.19 210);
   --chart-5: oklch(0.65 0.2 20);
-  --sidebar: oklch(0.20 0.011 55);
-  --sidebar-foreground: oklch(0.88 0.014 72);
-  --sidebar-primary: oklch(0.72 0.20 42);
-  --sidebar-primary-foreground: oklch(0.18 0.010 55);
-  --sidebar-accent: oklch(0.25 0.013 55);
-  --sidebar-accent-foreground: oklch(0.85 0.012 70);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.72 0.20 42);
+
+  /* Sidebar — slightly lighter than background, clearly separate from both */
+  --sidebar: oklch(0.12 0.010 265);
+  --sidebar-foreground: oklch(0.95 0.006 240);
+  --sidebar-primary: oklch(0.74 0.20 42);
+  --sidebar-primary-foreground: oklch(0.08 0.008 265);
+  --sidebar-accent: oklch(0.22 0.012 265);
+  --sidebar-accent-foreground: oklch(0.88 0.008 240);
+  --sidebar-border: oklch(1 0 0 / 18%);
+  --sidebar-ring: oklch(0.74 0.20 42);
+}
+
+/* Dark mode card elevation — shadows replace invisible ring borders */
+.dark [data-slot="card"] {
+  box-shadow: 0 1px 3px 0 oklch(0 0 0 / 50%), 0 0 0 1px oklch(1 0 0 / 10%);
+}
+
+/* Dark mode popover elevation */
+.dark [data-slot="popover"],
+.dark [role="dialog"],
+.dark [role="menu"],
+.dark [role="listbox"] {
+  box-shadow: 0 8px 24px 0 oklch(0 0 0 / 60%), 0 0 0 1px oklch(1 0 0 / 12%);
 }
 
 @layer base {

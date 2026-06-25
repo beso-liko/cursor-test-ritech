@@ -343,7 +343,7 @@ function FileRow({
       )}
 
       {entry.status === "done" && (
-        <p className="text-xs text-emerald-600 font-medium">{t("uploader.status.done")}</p>
+        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">{t("uploader.status.done")}</p>
       )}
 
       {entry.status === "error" && (

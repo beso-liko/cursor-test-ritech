@@ -117,7 +117,7 @@ export default function DocumentsPage() {
 
   return (
     <AppShell>
-      <div className="px-8 py-8 max-w-5xl">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -130,18 +130,18 @@ export default function DocumentsPage() {
                 : docCountLabel}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="outline"
               className="gap-2"
               onClick={() => setCreateFolderOpen(true)}
             >
               <FolderPlus className="w-4 h-4" />
-              {t("folder.new")}
+              <span className="hidden sm:inline">{t("folder.new")}</span>
             </Button>
             <Button nativeButton={false} render={<Link href="/upload" />} className="gap-2">
               <Upload className="w-4 h-4" />
-              {t("documents.upload")}
+              <span className="hidden sm:inline">{t("documents.upload")}</span>
             </Button>
           </div>
         </div>
@@ -190,6 +190,7 @@ export default function DocumentsPage() {
                 {t("documents.empty.cta")}
               </Button>
             </div>
+
           </div>
         ) : !hasResults ? (
           <p className="text-center text-muted-foreground py-12 text-sm">

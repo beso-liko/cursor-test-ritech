@@ -87,7 +87,7 @@ export default function SummaryPanel({
             {t("summary.title")}
           </h3>
         </div>
-        <p className="text-sm text-foreground/80 leading-relaxed bg-accent/30 rounded-xl p-4">
+        <p className="text-sm text-foreground leading-relaxed bg-muted/60 rounded-xl p-4">
           {parsed.summary}
         </p>
       </div>
@@ -107,7 +107,7 @@ export default function SummaryPanel({
                 <span className="mt-0.5 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
                   {i + 1}
                 </span>
-                <span className="text-foreground/80">{point}</span>
+                <span className="text-foreground">{point}</span>
               </li>
             ))}
           </ul>

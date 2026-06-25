@@ -225,20 +225,20 @@ export default function QuizInterface({
                 className={cn(
                   "rounded-xl p-3 border text-sm",
                   correct
-                    ? "bg-emerald-50 border-emerald-200"
-                    : "bg-red-50 border-red-200"
+                    ? "bg-emerald-500/10 border-emerald-500/25"
+                    : "bg-red-500/10 border-red-500/25"
                 )}
               >
                 <div className="flex items-start gap-2">
                   {correct ? (
-                    <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                   ) : (
-                    <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                    <XCircle className="w-4 h-4 text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
                   )}
                   <div>
                     <p className="font-medium text-foreground">{q.question}</p>
                     {!correct && (
-                      <p className="text-xs text-emerald-700 mt-1">
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
                         {t("quiz.result.correct", { answer: q.options[q.correct] })}
                       </p>
                     )}
@@ -302,20 +302,20 @@ export default function QuizInterface({
                 !revealed &&
                   "hover:border-primary/50 hover:bg-primary/5 border-border",
                 revealed && isCorrect &&
-                  "bg-emerald-50 border-emerald-300 text-emerald-800",
+                  "bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300",
                 revealed && isSelected && !isCorrect &&
-                  "bg-red-50 border-red-300 text-red-800",
+                  "bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-300",
                 revealed && !isSelected && !isCorrect &&
-                  "opacity-50 border-border"
+                  "opacity-60 border-border"
               )}
             >
               <div className="flex items-center gap-3">
                 <span
                   className={cn(
                     "w-5 h-5 rounded-full border text-xs font-bold flex items-center justify-center shrink-0",
-                    !revealed && "border-muted-foreground/40 text-muted-foreground",
-                    revealed && isCorrect && "border-emerald-500 text-emerald-700 bg-emerald-100",
-                    revealed && isSelected && !isCorrect && "border-red-500 text-red-700 bg-red-100"
+                    !revealed && "border-foreground/50 text-foreground",
+                    revealed && isCorrect && "border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-500/15",
+                    revealed && isSelected && !isCorrect && "border-red-500 text-red-700 dark:text-red-400 bg-red-500/15"
                   )}
                 >
                   {String.fromCharCode(65 + i)}

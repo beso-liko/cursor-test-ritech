@@ -29,6 +29,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         ?.split("=")[1] ?? localStorage.getItem("theme");
     if (stored === "dark" || stored === "light") {
       setThemeState(stored);
+      // Ensure the class is applied in case the inline script in layout.tsx failed
+      if (stored === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     }
   }, []);
 

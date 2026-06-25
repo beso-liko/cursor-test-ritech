@@ -148,13 +148,13 @@ export default function FlashcardViewer({
 
           {/* Back (Answer) */}
           <div
-            className="absolute inset-0 rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 flex flex-col items-center justify-center p-8 text-center"
+            className="absolute inset-0 rounded-2xl border-2 border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 flex flex-col items-center justify-center p-8 text-center"
             style={{
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
             }}
           >
-            <p className="text-xs font-medium text-emerald-600 uppercase tracking-widest mb-4">
+            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-4">
               {t("flashcards.answer")}
             </p>
             <p className="text-base text-foreground leading-relaxed">{card.answer}</p>
@@ -169,7 +169,7 @@ export default function FlashcardViewer({
           size="icon"
           onClick={prev}
           disabled={index === 0}
-          className={cn("h-9 w-9", index === 0 && "opacity-40")}
+          className="h-9 w-9"
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
@@ -192,7 +192,7 @@ export default function FlashcardViewer({
           size="icon"
           onClick={next}
           disabled={index === cards.length - 1}
-          className={cn("h-9 w-9", index === cards.length - 1 && "opacity-40")}
+          className="h-9 w-9"
         >
           <ChevronRight className="w-4 h-4" />
         </Button>

@@ -28,13 +28,13 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { useParallelGenerate } from "@/hooks/useParallelGenerate";
 
 const fileIcons = {
-  pdf: { icon: FileText, color: "text-red-500 bg-red-50" },
-  docx: { icon: File, color: "text-blue-500 bg-blue-50" },
-  pptx: { icon: Presentation, color: "text-orange-500 bg-orange-50" },
-  txt: { icon: FileImage, color: "text-gray-500 bg-gray-50" },
-  png: { icon: Image, color: "text-violet-500 bg-violet-50" },
-  jpg: { icon: Image, color: "text-violet-500 bg-violet-50" },
-  jpeg: { icon: Image, color: "text-violet-500 bg-violet-50" },
+  pdf: { icon: FileText, color: "text-red-500 dark:text-red-400 bg-red-500/10" },
+  docx: { icon: File, color: "text-blue-500 dark:text-blue-400 bg-blue-500/10" },
+  pptx: { icon: Presentation, color: "text-orange-500 dark:text-orange-400 bg-orange-500/10" },
+  txt: { icon: FileImage, color: "text-gray-500 dark:text-gray-400 bg-gray-500/10" },
+  png: { icon: Image, color: "text-violet-500 dark:text-violet-400 bg-violet-500/10" },
+  jpg: { icon: Image, color: "text-violet-500 dark:text-violet-400 bg-violet-500/10" },
+  jpeg: { icon: Image, color: "text-violet-500 dark:text-violet-400 bg-violet-500/10" },
 };
 
 interface DocumentDetailContentProps {
@@ -66,17 +66,17 @@ export default function DocumentDetailContent({
     ready: {
       label: t("document.status.ready"),
       icon: CheckCircle,
-      class: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      class: "bg-emerald-500/10 text-emerald-700 border-emerald-500/25 dark:text-emerald-400 dark:border-emerald-500/30",
     },
     processing: {
       label: t("document.status.processing"),
       icon: Clock,
-      class: "bg-amber-50 text-amber-700 border-amber-200",
+      class: "bg-amber-500/10 text-amber-700 border-amber-500/25 dark:text-amber-400 dark:border-amber-500/30",
     },
     error: {
       label: t("document.status.error"),
       icon: AlertCircle,
-      class: "bg-red-50 text-red-700 border-red-200",
+      class: "bg-red-500/10 text-red-700 border-red-500/25 dark:text-red-400 dark:border-red-500/30",
     },
   };
 
@@ -96,7 +96,7 @@ export default function DocumentDetailContent({
   );
 
   return (
-    <div className="px-8 py-8 max-w-4xl">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-4xl">
       {/* Back button */}
       <Button
         variant="ghost"
@@ -148,18 +148,18 @@ export default function DocumentDetailContent({
 
       {/* Processing state */}
       {doc.status === "processing" && (
-        <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 mb-6 flex items-center gap-3">
-          <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800">
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-4 mb-6 flex items-center gap-3">
+          <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-300">
             {t("document.processing.message")}
           </p>
         </div>
       )}
 
       {doc.status === "error" && (
-        <div className="rounded-xl bg-red-50 border border-red-200 p-4 mb-6 flex items-center gap-3">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-          <p className="text-sm text-red-800">
+        <div className="rounded-xl bg-red-500/10 border border-red-500/25 p-4 mb-6 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+          <p className="text-sm text-red-800 dark:text-red-300">
             {t("document.error.message")}
           </p>
         </div>
@@ -193,7 +193,7 @@ export default function DocumentDetailContent({
 
           <TabsContent value="summary">
             <Card className="shadow-none border-border/60">
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <SummaryPanel
                   summary={generate.summary.data}
                   isLoading={generate.summary.isLoading}
@@ -206,7 +206,7 @@ export default function DocumentDetailContent({
 
           <TabsContent value="flashcards">
             <Card className="shadow-none border-border/60">
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <FlashcardViewer
                   cards={generate.flashcards.data ?? []}
                   isLoading={generate.flashcards.isLoading}
@@ -219,7 +219,7 @@ export default function DocumentDetailContent({
 
           <TabsContent value="quiz">
             <Card className="shadow-none border-border/60">
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <QuizInterface
                   quiz={generate.quiz.data}
                   isLoading={generate.quiz.isLoading}
@@ -232,7 +232,7 @@ export default function DocumentDetailContent({
 
           <TabsContent value="chat">
             <Card className="shadow-none border-border/60">
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <ChatInterface documentId={doc.id} initialMessages={initialMessages} />
               </CardContent>
             </Card>

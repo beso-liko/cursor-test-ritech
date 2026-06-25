@@ -14,6 +14,7 @@ import {
   Settings,
   Sun,
   Moon,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -21,7 +22,11 @@ import { useTheme } from "@/components/ThemeProvider";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
-export default function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+export default function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { t, locale, setLocale } = useLanguage();
@@ -94,7 +99,7 @@ export default function Sidebar() {
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="font-extrabold text-[15px] leading-tight text-foreground tracking-tight">
               {t("sidebar.brand")}
             </p>
@@ -102,12 +107,21 @@ export default function Sidebar() {
               {t("sidebar.tagline")}
             </p>
           </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 -mr-1"
+              aria-label="Close menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="px-3 py-4 space-y-0.5">
-        <p className="text-[10px] font-semibold text-muted-foreground px-3 mb-2 uppercase tracking-widest">
+        <p className="text-xs font-semibold text-muted-foreground px-3 mb-2 uppercase tracking-widest">
           {t("sidebar.nav.label")}
         </p>
         {navItems.map(({ href, label, icon: Icon, description }) => {
@@ -117,6 +131,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group",
                 active
@@ -140,7 +155,7 @@ export default function Sidebar() {
                   className={cn(
                     "text-[11px] leading-tight font-normal truncate",
                     active
-                      ? "text-primary-foreground/70"
+                      ? "text-primary-foreground/90"
                       : "text-muted-foreground"
                   )}
                 >

@@ -11,10 +11,10 @@ interface StatsCardProps {
 }
 
 const colorMap = {
-  indigo: "bg-indigo-50 text-indigo-600",
-  emerald: "bg-emerald-50 text-emerald-600",
-  amber: "bg-amber-50 text-amber-600",
-  rose: "bg-rose-50 text-rose-600",
+  indigo: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
 };
 
 export default function StatsCard({

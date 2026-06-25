@@ -1,0 +1,56 @@
+---
+description: Enforce mobile-first, responsive design on every new feature
+alwaysApply: true
+---
+
+# Every Feature Must Be Responsive
+
+The app has a slide-in sidebar drawer on mobile/tablet (`< lg`) and a fixed sidebar on desktop (`lg+`). Every new UI feature must work on all three breakpoints.
+
+## Checklist for every new component or page
+
+- [ ] Tested at mobile (375px), tablet (768px), and desktop (1280px)
+- [ ] Page content uses `px-4 py-6 md:px-8 md:py-8`, never fixed `px-8`
+- [ ] No fixed widths that would overflow on small screens
+- [ ] Button labels hidden on mobile if space is tight: `<span className="hidden sm:inline">Label</span>`
+- [ ] Grids use mobile-first columns: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
+- [ ] No hardcoded `-50` tint colors (`bg-emerald-50` etc.) — use `bg-emerald-500/10` instead
+
+## Page layout pattern
+
+```tsx
+// ✅ Every page inside AppShell
+<div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl">
+  ...
+</div>
+```
+
+## Buttons with labels
+
+```tsx
+// ✅ Icon-only on mobile, label on sm+
+<Button className="gap-2">
+  <Upload className="w-4 h-4" />
+  <span className="hidden sm:inline">Upload</span>
+</Button>
+```
+
+## Grids
+
+```tsx
+// ✅
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+
+// ❌
+<div className="grid grid-cols-3 gap-3">
+```
+
+## Color classes
+
+```tsx
+// ✅ Works in light + dark
+"bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+
+// ❌ Near-white, invisible in dark mode
+"bg-emerald-50 text-emerald-700"
+```

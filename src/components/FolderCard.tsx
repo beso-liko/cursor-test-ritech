@@ -57,7 +57,7 @@ export default function FolderCard({
             {/* Folder icon — entire left area is a link */}
             <Link
               href={`/documents/group/${folder.id}`}
-              className="shrink-0 p-2.5 rounded-xl bg-amber-50 text-amber-500 hover:bg-amber-100 transition-colors"
+              className="shrink-0 p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
             >
               <Folder className="w-5 h-5" />
             </Link>

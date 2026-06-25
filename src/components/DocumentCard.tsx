@@ -14,13 +14,13 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 
 const fileIcons = {
-  pdf: { icon: FileText, color: "text-red-500 bg-red-50" },
-  docx: { icon: File, color: "text-blue-500 bg-blue-50" },
-  pptx: { icon: Presentation, color: "text-orange-500 bg-orange-50" },
-  txt: { icon: FileImage, color: "text-gray-500 bg-gray-50" },
-  png: { icon: Image, color: "text-violet-500 bg-violet-50" },
-  jpg: { icon: Image, color: "text-violet-500 bg-violet-50" },
-  jpeg: { icon: Image, color: "text-violet-500 bg-violet-50" },
+  pdf: { icon: FileText, color: "text-red-500 dark:text-red-400 bg-red-500/10" },
+  docx: { icon: File, color: "text-blue-500 dark:text-blue-400 bg-blue-500/10" },
+  pptx: { icon: Presentation, color: "text-orange-500 dark:text-orange-400 bg-orange-500/10" },
+  txt: { icon: FileImage, color: "text-gray-500 dark:text-gray-400 bg-gray-500/10" },
+  png: { icon: Image, color: "text-violet-500 dark:text-violet-400 bg-violet-500/10" },
+  jpg: { icon: Image, color: "text-violet-500 dark:text-violet-400 bg-violet-500/10" },
+  jpeg: { icon: Image, color: "text-violet-500 dark:text-violet-400 bg-violet-500/10" },
 };
 
 interface DocumentCardProps {
@@ -41,9 +41,9 @@ export default function DocumentCard({
   const { t, locale } = useLanguage();
 
   const statusConfig = {
-    ready: { label: t("card.status.ready"), icon: CheckCircle, class: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    processing: { label: t("card.status.processing"), icon: Clock, class: "bg-amber-50 text-amber-700 border-amber-200" },
-    error: { label: t("card.status.error"), icon: AlertCircle, class: "bg-red-50 text-red-700 border-red-200" },
+    ready: { label: t("card.status.ready"), icon: CheckCircle, class: "bg-emerald-500/10 text-emerald-700 border-emerald-500/25 dark:text-emerald-400 dark:border-emerald-500/30" },
+    processing: { label: t("card.status.processing"), icon: Clock, class: "bg-amber-500/10 text-amber-700 border-amber-500/25 dark:text-amber-400 dark:border-amber-500/30" },
+    error: { label: t("card.status.error"), icon: AlertCircle, class: "bg-red-500/10 text-red-700 border-red-500/25 dark:text-red-400 dark:border-red-500/30" },
   };
 
   const fileConfig = fileIcons[doc.file_type as keyof typeof fileIcons] ?? fileIcons.txt;
