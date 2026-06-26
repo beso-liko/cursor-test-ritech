@@ -28,6 +28,25 @@ export async function retrieveContext(
   return docs;
 }
 
+type ScoredDoc = [{ pageContent: string; metadata: Record<string, unknown> }, number];
+
+export async function retrieveContextWithScores(
+  query: string,
+  documentId: string,
+  topK = 5,
+  userId?: string
+): Promise<ScoredDoc[]> {
+  const filter: Record<string, unknown> = { documentId };
+  if (userId) filter.userId = userId;
+
+  const vectorStore = await PineconeStore.fromExistingIndex(makeEmbeddings(), {
+    pineconeIndex: getPineconeIndex(),
+    filter,
+  });
+
+  return vectorStore.similaritySearchWithScore(query, topK);
+}
+
 export async function retrieveContextForDocuments(
   query: string,
   documentIds: string[],
@@ -48,6 +67,27 @@ export async function retrieveContextForDocuments(
 
   const docs = await vectorStore.similaritySearch(query, topK);
   return docs;
+}
+
+export async function retrieveContextForDocumentsWithScores(
+  query: string,
+  documentIds: string[],
+  topK = 8,
+  userId?: string
+): Promise<ScoredDoc[]> {
+  if (documentIds.length === 1) {
+    return retrieveContextWithScores(query, documentIds[0], topK, userId);
+  }
+
+  const filter: Record<string, unknown> = { documentId: { $in: documentIds } };
+  if (userId) filter.userId = userId;
+
+  const vectorStore = await PineconeStore.fromExistingIndex(makeEmbeddings(), {
+    pineconeIndex: getPineconeIndex(),
+    filter,
+  });
+
+  return vectorStore.similaritySearchWithScore(query, topK);
 }
 
 export async function getSampleContext(

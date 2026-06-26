@@ -67,7 +67,12 @@ export async function POST(req: NextRequest) {
         .update({ status: "error" })
         .eq("id", documentId);
       return NextResponse.json(
-        { error: "Could not extract text from file" },
+        {
+          error:
+            "No readable text was found in this file. " +
+            "If it is a scanned PDF or image-only document, " +
+            "please export it with a text layer or use a plain-text format.",
+        },
         { status: 422 }
       );
     }

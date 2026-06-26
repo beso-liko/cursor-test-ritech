@@ -27,6 +27,10 @@ export const metadata: Metadata = {
   title: "StudyBuddy - AI Study Assistant",
   description:
     "Upload documents, generate summaries, flashcards, quizzes, and chat with your study materials using AI.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

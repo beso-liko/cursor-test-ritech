@@ -1,10 +1,20 @@
 import { NextRequest } from "next/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { retrieveContext, retrieveContextForDocuments } from "@/lib/langchain/rag-chain";
+import {
+  retrieveContextWithScores,
+  retrieveContextForDocumentsWithScores,
+} from "@/lib/langchain/rag-chain";
 import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
+
+// Minimum cosine similarity score used as a last-resort safety net.
+// Keep this LOW (0.15) — the hardened system prompt is the primary guardrail.
+// Generic meta-questions ("summarize", "what is this about") score around 0.20-0.30
+// against specific content, so a high threshold wrongly blocks them.
+// Only truly unrelated queries (sports results, weather, etc.) score below 0.15.
+const RELEVANCE_THRESHOLD = 0.15;
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     const userMessage = messages[messages.length - 1]?.content ?? "";
 
-    let context: string;
+    let docsWithScores: [{ pageContent: string; metadata: Record<string, unknown> }, number][];
 
     if (groupId) {
       const supabase = createAdminClient();
@@ -42,12 +52,21 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const contextDocs = await retrieveContextForDocuments(userMessage, docIds, 5, user.id);
-      context = contextDocs.map((d) => d.pageContent).join("\n\n---\n\n");
+      docsWithScores = await retrieveContextForDocumentsWithScores(userMessage, docIds, 5, user.id);
     } else {
-      const docs = await retrieveContext(userMessage, documentId, 5, user.id);
-      context = docs.map((d) => d.pageContent).join("\n\n---\n\n");
+      docsWithScores = await retrieveContextWithScores(userMessage, documentId, 5, user.id);
     }
+
+    // Layer 1 guardrail: reject questions with no meaningful similarity to the document.
+    const maxScore = docsWithScores.length > 0
+      ? Math.max(...docsWithScores.map(([, score]) => score))
+      : 0;
+
+    if (maxScore < RELEVANCE_THRESHOLD) {
+      return new Response(JSON.stringify({ error: "off_topic" }), { status: 422 });
+    }
+
+    const context = docsWithScores.map(([doc]) => doc.pageContent).join("\n\n---\n\n");
 
     const langLine =
       locale === "sq"
@@ -58,14 +77,19 @@ export async function POST(req: NextRequest) {
       ? "their study materials (multiple documents)"
       : "their document";
 
+    // Layer 2 guardrail: explicit refusal instruction in the system prompt.
     const result = streamText({
       model: openai("gpt-4o-mini"),
-      system: `You are an expert study assistant helping a student understand ${sourceDesc}.
+      system: `You are a study assistant strictly scoped to the provided document(s).
+You MUST ONLY answer questions that are directly about the content in the context below.
+If a question is not answerable from the context — including general knowledge, current events, \
+or anything unrelated to the document — respond with exactly:
+"I can only answer questions about the uploaded material. This question appears to be outside that scope."
+Do not attempt to answer off-topic questions under any circumstances.
 Answer questions clearly and concisely based on the provided context.
-If the context doesn't contain enough information to answer, say so honestly.
 Use markdown formatting for better readability when appropriate.${langLine}
 
-Relevant context from the document(s):
+Relevant context from ${sourceDesc}:
 ${context}`,
       messages,
       temperature: 0.3,

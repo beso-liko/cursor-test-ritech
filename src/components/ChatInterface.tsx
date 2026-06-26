@@ -28,11 +28,33 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
 
   const chatBody = groupId ? { groupId, locale } : { documentId, locale };
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } =
     useChat({
       api: "/api/chat",
       body: chatBody,
       initialMessages: initialMessages ?? [],
+      onError: (error) => {
+        let isOffTopic = false;
+        try {
+          const parsed = JSON.parse(error.message);
+          if (parsed?.error === "off_topic") isOffTopic = true;
+        } catch {
+          if (error.message.includes("off_topic")) isOffTopic = true;
+        }
+
+        if (isOffTopic) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content:
+                "I can only answer questions about the uploaded material. This question appears to be outside that scope.",
+              createdAt: new Date(),
+            },
+          ]);
+        }
+      },
     });
 
   // Keep refs in sync
