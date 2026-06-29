@@ -83,7 +83,7 @@ PINECONE_INDEX_NAME=study-assistant
 
 # Your deployed site URL — used as the base for email verification links.
 # Leave empty for local development (falls back to window.location.origin).
-NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
+NEXT_PUBLIC_SITE_URL=https://app.studybuddy.al
 ```
 
 ### Supabase email redirect configuration
@@ -91,8 +91,8 @@ NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
 Email verification links will point to `localhost:3000` unless you configure Supabase:
 
 1. Go to **Supabase Dashboard → Authentication → URL Configuration**
-2. Set **Site URL** to your production URL (e.g. `https://your-app.vercel.app`)
-3. Under **Redirect URLs**, add `https://your-app.vercel.app/auth/callback`
+2. Set **Site URL** to your production URL (e.g. `https://app.studybuddy.al`)
+3. Under **Redirect URLs**, add `https://app.studybuddy.al/auth/callback`
 4. Optionally also add `http://localhost:3000/auth/callback` for local testing
 
 ---
@@ -110,10 +110,19 @@ Open http://localhost:3000
 
 ## 6. Deploy to Vercel
 
+This app deploys to **`app.studybuddy.al`**. Marketing lives at **`studybuddy.al`** in a separate repo. Both use two Vercel projects under the same team and stay in sync via Deploy Hooks.
+
+**Full setup:** see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (DNS records, env vars, GitHub Actions, marketing CTAs).
+
+Quick start for this repo only:
+
 ```bash
 npx vercel
-# set all env vars in Vercel dashboard → Settings → Environment Variables
+# set env vars in Vercel → Settings → Environment Variables
+# NEXT_PUBLIC_SITE_URL=https://app.studybuddy.al
 ```
+
+After deploy hooks are configured, pushing to `main` also redeploys marketing via `.github/workflows/deploy-both.yml`.
 
 ---
 

@@ -1,0 +1,27 @@
+# Redeploy the marketing site when this app repo pushes to main.
+# Vercel auto-deploys this project; this workflow keeps marketing in sync.
+#
+# Required GitHub secret: VERCEL_MARKETING_DEPLOY_HOOK
+# Create in Vercel → marketing project → Settings → Git → Deploy Hooks
+
+name: Deploy both sites
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  trigger-marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy marketing site
+        env:
+          VERCEL_MARKETING_DEPLOY_HOOK: ${{ secrets.VERCEL_MARKETING_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_MARKETING_DEPLOY_HOOK" ]; then
+            echo "::warning::VERCEL_MARKETING_DEPLOY_HOOK is not set."
+            echo "Add the marketing Deploy Hook URL as a GitHub secret to redeploy both sites together."
+            echo "See docs/DEPLOYMENT.md"
+            exit 0
+          fi
+          curl -fsS -X POST "$VERCEL_MARKETING_DEPLOY_HOOK"

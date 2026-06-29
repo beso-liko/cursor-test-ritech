@@ -9,6 +9,7 @@ import {
 } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 import ClerkAuthLoadError from "@/components/ClerkAuthLoadError";
+import { authClerkAppearance } from "@/lib/auth-clerk-appearance";
 
 const LOAD_TIMEOUT_MS = 8000;
 
@@ -21,7 +22,7 @@ export default function ClerkSignUpPanel() {
   }, []);
 
   return (
-    <div className="w-full max-w-md">
+    <div className="auth-page-clerk w-full">
       <ClerkLoading>
         {timedOut ? (
           <ClerkAuthLoadError />
@@ -41,6 +42,7 @@ export default function ClerkSignUpPanel() {
           path="/sign-up"
           signInUrl="/sign-in"
           fallbackRedirectUrl="/"
+          appearance={authClerkAppearance}
         />
       </ClerkLoaded>
     </div>

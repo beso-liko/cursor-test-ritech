@@ -1,0 +1,27 @@
+# Copy this file to your marketing repo as:
+#   .github/workflows/deploy-both.yml
+#
+# Required GitHub secret: VERCEL_APP_DEPLOY_HOOK
+# Create in Vercel → app project → Settings → Git → Deploy Hooks
+
+name: Deploy both sites
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  trigger-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy app site
+        env:
+          VERCEL_APP_DEPLOY_HOOK: ${{ secrets.VERCEL_APP_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_APP_DEPLOY_HOOK" ]; then
+            echo "::warning::VERCEL_APP_DEPLOY_HOOK is not set."
+            echo "Add the app Deploy Hook URL as a GitHub secret to redeploy both sites together."
+            echo "See the app repo docs/DEPLOYMENT.md"
+            exit 0
+          fi
+          curl -fsS -X POST "$VERCEL_APP_DEPLOY_HOOK"

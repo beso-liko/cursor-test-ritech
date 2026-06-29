@@ -163,3 +163,17 @@
     @apply font-sans;
   }
 }
+
+/* Clerk auth pages: card defaults to a fixed width and sits left in the container. */
+.auth-page-clerk .cl-rootBox {
+  width: 100%;
+  margin-inline: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-page-clerk .cl-cardBox,
+.auth-page-clerk .cl-card {
+  width: 100%;
+  max-width: none;
+}
