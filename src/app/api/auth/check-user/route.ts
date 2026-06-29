@@ -20,9 +20,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ exists: false });
     }
 
-    const exists = data.users.some(
-      (u) => u.email?.toLowerCase() === email
-    );
+    const normalized = email.toLowerCase();
+    const exists = data.users.some((user) => {
+      if (user.email?.toLowerCase() === normalized) return true;
+      return (user.identities ?? []).some(
+        (identity) =>
+          typeof identity.identity_data?.email === "string" &&
+          identity.identity_data.email.toLowerCase() === normalized
+      );
+    });
 
     return NextResponse.json({ exists });
   } catch {
