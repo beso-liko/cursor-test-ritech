@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { createAdminClient } from "@/lib/supabase/server";
 import type { QuizQuestion } from "@/lib/supabase/types";
 
 /** Fisher-Yates unbiased shuffle */
@@ -23,12 +24,6 @@ function shuffleAnswers(q: QuizQuestion): QuizQuestion {
   return { ...q, options: shuffled, correct: shuffled.indexOf(correctAnswer) };
 }
 
-/**
- * GET /api/quiz-variant?quizId=<id>
- *
- * Draws a fresh 9-question variant from the stored 18-question pool:
- *   3 easy + 3 medium + 3 hard, in a randomised order, with shuffled answer positions.
- */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const quizId = searchParams.get("quizId");
@@ -38,14 +33,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: quiz, error } = await supabase
+    const admin = createAdminClient();
+    const { data: quiz, error } = await admin
       .from("quizzes")
       .select("*")
       .eq("id", quizId)
@@ -57,14 +49,14 @@ export async function GET(req: NextRequest) {
 
     const pool: QuizQuestion[] = quiz.questions ?? [];
 
-    const easy   = pool.filter((q) => q.difficulty === "easy");
+    const easy = pool.filter((q) => q.difficulty === "easy");
     const medium = pool.filter((q) => q.difficulty === "medium");
-    const hard   = pool.filter((q) => q.difficulty === "hard");
+    const hard = pool.filter((q) => q.difficulty === "hard");
 
     const selected = [
-      ...pickRandom(easy,   Math.min(3, easy.length)),
+      ...pickRandom(easy, Math.min(3, easy.length)),
       ...pickRandom(medium, Math.min(3, medium.length)),
-      ...pickRandom(hard,   Math.min(3, hard.length)),
+      ...pickRandom(hard, Math.min(3, hard.length)),
     ];
 
     const questions = fisherYates(selected).map(shuffleAnswers);

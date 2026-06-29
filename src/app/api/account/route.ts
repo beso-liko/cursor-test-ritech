@@ -1,27 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+    const { user } = auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data, error } = await supabase
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("profiles")
       .select("first_name, last_name")
-      .eq("id", user.id)
+      .eq("id", user.supabaseUserId)
       .maybeSingle();
 
     if (error) throw error;
 
     return NextResponse.json({
       email: user.email,
-      first_name: data?.first_name ?? null,
-      last_name: data?.last_name ?? null,
+      first_name: data?.first_name ?? user.firstName,
+      last_name: data?.last_name ?? user.lastName,
     });
   } catch (err) {
     console.error("Account GET error:", err);
@@ -31,23 +30,26 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const supabase = await createAuthClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+    const { user } = auth;
 
     const body = await req.json();
-    const first_name = typeof body.first_name === "string" ? body.first_name.trim().slice(0, 100) : null;
-    const last_name = typeof body.last_name === "string" ? body.last_name.trim().slice(0, 100) : null;
+    const first_name =
+      typeof body.first_name === "string" ? body.first_name.trim().slice(0, 100) : null;
+    const last_name =
+      typeof body.last_name === "string" ? body.last_name.trim().slice(0, 100) : null;
 
-    const { error } = await supabase
-      .from("profiles")
-      .upsert(
-        { id: user.id, first_name, last_name, updated_at: new Date().toISOString() },
-        { onConflict: "id" }
-      );
+    const admin = createAdminClient();
+    const { error } = await admin.from("profiles").upsert(
+      {
+        id: user.supabaseUserId,
+        first_name,
+        last_name,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
     if (error) throw error;
 

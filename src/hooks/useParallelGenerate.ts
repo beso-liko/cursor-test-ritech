@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useBackgroundGenerate } from "@/hooks/useBackgroundGenerate";
 import type { Summary, Flashcard, Quiz } from "@/lib/supabase/types";
 
@@ -27,6 +26,17 @@ interface UseParallelGenerateReturn {
   quiz: GenerateSlot<Quiz>;
 }
 
+function contentPollUrl(
+  type: "summary" | "flashcards" | "quiz",
+  documentId?: string,
+  groupId?: string
+) {
+  const params = new URLSearchParams({ type });
+  if (groupId) params.set("groupId", groupId);
+  else if (documentId) params.set("documentId", documentId);
+  return `/api/content?${params.toString()}`;
+}
+
 export function useParallelGenerate({
   documentId,
   groupId,
@@ -35,25 +45,21 @@ export function useParallelGenerate({
   initialFlashcards,
   initialQuiz,
 }: UseParallelGenerateOptions): UseParallelGenerateReturn {
-  const supabase = useMemo(() => createBrowserClient(), []);
-
   const body = useMemo(
     () => (groupId ? { groupId, locale } : { documentId, locale }),
     [groupId, documentId, locale]
   );
 
-  // --- Summary ---
   const [summaryData, setSummaryData] = useState<Summary | null>(initialSummary);
 
   const summaryPollFn = useMemo(
     () => async (): Promise<Summary | null> => {
-      const query = groupId
-        ? supabase.from("summaries").select("*").eq("group_id", groupId).single()
-        : supabase.from("summaries").select("*").eq("document_id", documentId).single();
-      const { data: row } = await query;
-      return row ?? null;
+      const res = await fetch(contentPollUrl("summary", documentId, groupId));
+      if (!res.ok) return null;
+      const row = await res.json();
+      return row?.id ? row : null;
     },
-    [supabase, groupId, documentId]
+    [groupId, documentId]
   );
 
   const {
@@ -68,18 +74,16 @@ export function useParallelGenerate({
     onResult: setSummaryData,
   });
 
-  // --- Flashcards ---
   const [flashcardsData, setFlashcardsData] = useState<Flashcard[]>(initialFlashcards);
 
   const flashcardsPollFn = useMemo(
     () => async (): Promise<Flashcard[] | null> => {
-      const query = groupId
-        ? supabase.from("flashcards").select("*").eq("group_id", groupId)
-        : supabase.from("flashcards").select("*").eq("document_id", documentId);
-      const { data: rows } = await query;
-      return rows && rows.length > 0 ? (rows as Flashcard[]) : null;
+      const res = await fetch(contentPollUrl("flashcards", documentId, groupId));
+      if (!res.ok) return null;
+      const rows = await res.json();
+      return Array.isArray(rows) && rows.length > 0 ? rows : null;
     },
-    [supabase, groupId, documentId]
+    [groupId, documentId]
   );
 
   const {
@@ -94,18 +98,16 @@ export function useParallelGenerate({
     onResult: setFlashcardsData,
   });
 
-  // --- Quiz ---
   const [quizData, setQuizData] = useState<Quiz | null>(initialQuiz);
 
   const quizPollFn = useMemo(
     () => async (): Promise<Quiz | null> => {
-      const query = groupId
-        ? supabase.from("quizzes").select("*").eq("group_id", groupId).single()
-        : supabase.from("quizzes").select("*").eq("document_id", documentId).single();
-      const { data: row } = await query;
-      return row ?? null;
+      const res = await fetch(contentPollUrl("quiz", documentId, groupId));
+      if (!res.ok) return null;
+      const row = await res.json();
+      return row?.id ? row : null;
     },
-    [supabase, groupId, documentId]
+    [groupId, documentId]
   );
 
   const {

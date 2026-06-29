@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -130,11 +129,8 @@ export default function FileUploader() {
     setGlobalStatus("running");
     setGlobalError(null);
 
-    const supabase = createBrowserClient();
-
-    // Get the authenticated user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const meRes = await fetch("/api/me");
+    if (!meRes.ok) {
       setGlobalError("You must be signed in to upload files.");
       setGlobalStatus("error");
       return;
@@ -161,7 +157,7 @@ export default function FileUploader() {
 
     // Upload + process each file (in parallel)
     const results = await Promise.allSettled(
-      entries.map((entry) => uploadOne(entry, groupId, user.id, supabase, updateEntry))
+      entries.map((entry) => uploadOne(entry, groupId, updateEntry))
     );
 
     const allDocumentIds = results
@@ -345,58 +341,46 @@ function FileRow({
 async function uploadOne(
   entry: FileEntry,
   groupId: string | null,
-  userId: string,
-  supabase: ReturnType<typeof createBrowserClient>,
   update: (id: string, patch: Partial<FileEntry>) => void
 ): Promise<string> {
-  const fileName = entry.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `${Date.now()}_${fileName}`;
-
   update(entry.id, { status: "uploading", progress: 10, error: null });
 
   try {
-    // Create document record
-    const insertData: Record<string, unknown> = {
-      name: entry.file.name,
-      file_type: entry.fileType,
-      status: "processing",
-      chunk_count: 0,
-      user_id: userId,
-    };
-    if (groupId) insertData.group_id = groupId;
+    const createRes = await fetch("/api/documents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: entry.file.name,
+        fileType: entry.fileType,
+        groupId,
+      }),
+    });
 
-    const { data: docRes, error: docErr } = await supabase
-      .from("documents")
-      .insert(insertData)
-      .select()
-      .single();
+    if (!createRes.ok) throw new Error("Failed to create document record");
 
-    if (docErr || !docRes) throw new Error("Failed to create document record");
-
-    const documentId: string = docRes.id;
+    const { documentId, storagePath, signedUploadUrl, fileUrl } = await createRes.json();
     update(entry.id, { progress: 25, documentId });
 
-    // Upload file to Supabase Storage
-    const { error: uploadErr } = await supabase.storage
-      .from("documents")
-      .upload(storagePath, entry.file, { upsert: false });
+    const uploadRes = await fetch(signedUploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": entry.file.type || "application/octet-stream",
+      },
+      body: entry.file,
+    });
 
-    if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
+    if (!uploadRes.ok) throw new Error("Upload failed");
 
     update(entry.id, { progress: 50, status: "processing" });
 
-    const { data: urlData } = supabase.storage
-      .from("documents")
-      .getPublicUrl(storagePath);
-
-    await supabase
-      .from("documents")
-      .update({ file_url: urlData.publicUrl })
-      .eq("id", documentId);
+    await fetch(`/api/documents/${documentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileUrl }),
+    });
 
     update(entry.id, { progress: 60 });
 
-    // Trigger server-side processing
     const res = await fetch("/api/process", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

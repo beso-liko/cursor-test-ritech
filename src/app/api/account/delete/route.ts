@@ -1,27 +1,22 @@
 import { NextResponse } from "next/server";
-import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function DELETE() {
   try {
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Sign out first so the session cookie is cleared before the user record is deleted
-    await supabase.auth.signOut();
-
-    // Delete the auth user via the admin client (service role bypasses RLS).
-    // All app tables have `user_id references auth.users(id) on delete cascade`,
-    // so documents, document_groups, quiz_results, and profiles are removed automatically.
     const admin = createAdminClient();
-    const { error } = await admin.auth.admin.deleteUser(user.id);
+    const { error } = await admin.auth.admin.deleteUser(auth.user.supabaseUserId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    const client = await clerkClient();
+    await client.users.deleteUser(auth.user.clerkUserId);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

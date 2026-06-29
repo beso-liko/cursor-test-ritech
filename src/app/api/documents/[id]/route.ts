@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
 import { createAdminClient } from "@/lib/supabase/server";
 import { deleteDocumentVectors } from "@/lib/langchain/embedder";
+import { getOwnedDocument } from "@/lib/supabase/user-queries";
 
 export async function GET(
   _req: NextRequest,
@@ -9,21 +10,15 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const doc = await getOwnedDocument(auth.user.supabaseUserId, id);
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    const { data, error } = await supabase
-      .from("documents")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) throw error;
-    return NextResponse.json(data);
+    return NextResponse.json(doc);
   } catch (err) {
     console.error("Document GET error:", err);
     return NextResponse.json(
@@ -39,28 +34,34 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const doc = await getOwnedDocument(auth.user.supabaseUserId, id);
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
     const body = await req.json();
-    // Only allow updating group_id for now
     const update: Record<string, string | null> = {};
+
     if ("groupId" in body) {
       update.group_id = body.groupId ?? null;
+    }
+    if ("fileUrl" in body && typeof body.fileUrl === "string") {
+      update.file_url = body.fileUrl;
     }
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("documents")
       .update(update)
       .eq("id", id)
+      .eq("user_id", auth.user.supabaseUserId)
       .select()
       .single();
 
@@ -78,35 +79,27 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const supabase = await createAuthClient();
-    const admin = createAdminClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const admin = createAdminClient();
+    const doc = await getOwnedDocument(auth.user.supabaseUserId, id);
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    // Get document to find file path (RLS ensures it belongs to the user)
-    const { data: doc } = await supabase
-      .from("documents")
-      .select("file_url")
-      .eq("id", id)
-      .single();
-
-    // Delete vectors from Pinecone
     await deleteDocumentVectors(id).catch(console.error);
 
-    // Delete file from Supabase Storage (admin client needed for storage ops)
-    if (doc?.file_url) {
+    if (doc.file_url) {
       const path = doc.file_url.split("/").slice(-1)[0];
       await admin.storage.from("documents").remove([path]);
     }
 
-    // Delete document record (cascades to summaries, flashcards, quizzes, chat)
-    const { error } = await supabase
+    const { error } = await admin
       .from("documents")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", auth.user.supabaseUserId);
 
     if (error) throw error;
     return NextResponse.json({ success: true });

@@ -1,11 +1,13 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
   retrieveContextWithScores,
   retrieveContextForDocumentsWithScores,
 } from "@/lib/langchain/rag-chain";
-import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { getOwnedDocument, getOwnedGroup } from "@/lib/supabase/user-queries";
 
 export const maxDuration = 60;
 
@@ -26,10 +28,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const authClient = await createAuthClient();
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) {
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+    const { user } = auth;
+
+    if (groupId) {
+      const group = await getOwnedGroup(user.supabaseUserId, groupId);
+      if (!group) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+      }
+    } else if (documentId) {
+      const doc = await getOwnedDocument(user.supabaseUserId, documentId);
+      if (!doc) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+      }
     }
 
     const userMessage = messages[messages.length - 1]?.content ?? "";
@@ -42,6 +56,7 @@ export async function POST(req: NextRequest) {
         .from("documents")
         .select("id")
         .eq("group_id", groupId)
+        .eq("user_id", user.supabaseUserId)
         .eq("status", "ready");
 
       const docIds = (docs ?? []).map((d: { id: string }) => d.id);
@@ -52,9 +67,9 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      docsWithScores = await retrieveContextForDocumentsWithScores(userMessage, docIds, 5, user.id);
+      docsWithScores = await retrieveContextForDocumentsWithScores(userMessage, docIds, 5, user.supabaseUserId);
     } else {
-      docsWithScores = await retrieveContextWithScores(userMessage, documentId, 5, user.id);
+      docsWithScores = await retrieveContextWithScores(userMessage, documentId, 5, user.supabaseUserId);
     }
 
     // Layer 1 guardrail: reject questions with no meaningful similarity to the document.

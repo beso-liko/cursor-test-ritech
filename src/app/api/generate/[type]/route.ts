@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-import { createAuthClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { getOwnedDocument, getOwnedGroup } from "@/lib/supabase/user-queries";
 import { getSampleContext, getSampleContextForDocuments } from "@/lib/langchain/rag-chain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -91,12 +93,9 @@ export async function POST(
   const { type } = await params;
 
   try {
-    const supabase = await createAuthClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+    const { user } = auth;
 
     const { documentId, groupId, locale = "en" } = await req.json();
 
@@ -106,6 +105,20 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    if (groupId) {
+      const group = await getOwnedGroup(user.supabaseUserId, groupId);
+      if (!group) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else if (documentId) {
+      const doc = await getOwnedDocument(user.supabaseUserId, documentId);
+      if (!doc) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
+    const supabase = createAdminClient();
 
     if (!["summary", "flashcards", "quiz"].includes(type)) {
       return NextResponse.json(
@@ -177,9 +190,9 @@ export async function POST(
           { status: 422 }
         );
       }
-      context = await getSampleContextForDocuments(docIds, undefined, user.id);
+      context = await getSampleContextForDocuments(docIds, undefined, user.supabaseUserId);
     } else {
-      context = await getSampleContext(documentId, undefined, user.id);
+      context = await getSampleContext(documentId, undefined, user.supabaseUserId);
     }
 
     if (!context) {

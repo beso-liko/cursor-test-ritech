@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthClient, createAdminClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { createAdminClient } from "@/lib/supabase/server";
 import { extractText } from "@/lib/extractors";
 import { splitText } from "@/lib/langchain/splitter";
 import { embedAndStore } from "@/lib/langchain/embedder";
+import { getOwnedDocument } from "@/lib/supabase/user-queries";
 import type { FileType } from "@/lib/supabase/types";
 
 export const maxDuration = 60;
@@ -18,17 +20,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Authenticate the request
-    const authClient = await createAuthClient();
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) {
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+
+    const owned = await getOwnedDocument(auth.user.supabaseUserId, documentId);
+    if (!owned) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Use admin client for storage + DB status updates
     const supabase = createAdminClient();
 
-    // Download file from Supabase Storage
     const { data: fileData, error: downloadError } = await supabase.storage
       .from("documents")
       .download(filePath);
@@ -46,7 +47,6 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await fileData.arrayBuffer());
 
-    // Extract text
     let rawText: string;
     try {
       rawText = await extractText(buffer, fileType as FileType);
@@ -77,13 +77,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Split into chunks
     const chunks = await splitText(rawText);
+    const chunkCount = await embedAndStore(
+      chunks,
+      documentId,
+      auth.user.supabaseUserId
+    );
 
-    // Embed and store in Pinecone (with userId for per-user filtering)
-    const chunkCount = await embedAndStore(chunks, documentId, user.id);
-
-    // Update document status in Supabase
     await supabase
       .from("documents")
       .update({ status: "ready", chunk_count: chunkCount })

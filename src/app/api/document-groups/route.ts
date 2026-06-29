@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+    const { user } = auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data, error } = await supabase
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("document_groups")
       .select("*")
+      .eq("user_id", user.supabaseUserId)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -25,21 +25,19 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createAuthClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+    const { user } = auth;
 
     const { name } = await req.json();
     if (!name || typeof name !== "string") {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("document_groups")
-      .insert({ name: name.slice(0, 200), user_id: user.id })
+      .insert({ name: name.slice(0, 200), user_id: user.supabaseUserId })
       .select()
       .single();
 

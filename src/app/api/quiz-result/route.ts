@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/require-api-user";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,16 +13,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data, error } = await supabase
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("quiz_results")
-      .insert({ quiz_id: quizId, score, total, answers, user_id: user.id })
+      .insert({
+        quiz_id: quizId,
+        score,
+        total,
+        answers,
+        user_id: auth.user.supabaseUserId,
+      })
       .select()
       .single();
 
@@ -48,17 +52,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const supabase = await createAuthClient();
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data, error } = await supabase
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("quiz_results")
       .select("*")
       .eq("quiz_id", quizId)
+      .eq("user_id", auth.user.supabaseUserId)
       .order("taken_at", { ascending: false });
 
     if (error) throw error;

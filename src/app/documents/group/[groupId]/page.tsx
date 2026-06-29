@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import GroupDetailContent from "@/components/GroupDetailContent";
-import { createAuthClient } from "@/lib/supabase/server";
+import { getAppUser } from "@/lib/auth/app-user";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getOwnedGroup } from "@/lib/supabase/user-queries";
 import type {
   Document,
   DocumentGroup,
@@ -11,31 +13,41 @@ import type {
 } from "@/lib/supabase/types";
 import type { Message } from "ai";
 
-async function getGroupData(groupId: string) {
-  const supabase = await createAuthClient();
+async function getGroupData(groupId: string, supabaseUserId: string) {
+  const group = await getOwnedGroup(supabaseUserId, groupId);
+  if (!group) {
+    return {
+      group: null,
+      documents: [],
+      summary: null,
+      flashcards: [],
+      quiz: null,
+      initialMessages: [],
+    };
+  }
 
+  const admin = createAdminClient();
   const [
-    { data: group },
     { data: documents },
     { data: summary },
     { data: flashcards },
     { data: quiz },
     { data: chatSession },
   ] = await Promise.all([
-    supabase.from("document_groups").select("*").eq("id", groupId).single(),
-    supabase
+    admin
       .from("documents")
       .select("*")
       .eq("group_id", groupId)
+      .eq("user_id", supabaseUserId)
       .order("created_at", { ascending: true }),
-    supabase.from("summaries").select("*").eq("group_id", groupId).single(),
-    supabase.from("flashcards").select("*").eq("group_id", groupId),
-    supabase.from("quizzes").select("*").eq("group_id", groupId).single(),
-    supabase.from("chat_sessions").select("messages").eq("group_id", groupId).single(),
+    admin.from("summaries").select("*").eq("group_id", groupId).single(),
+    admin.from("flashcards").select("*").eq("group_id", groupId),
+    admin.from("quizzes").select("*").eq("group_id", groupId).single(),
+    admin.from("chat_sessions").select("messages").eq("group_id", groupId).single(),
   ]);
 
   return {
-    group: group as DocumentGroup | null,
+    group: group as DocumentGroup,
     documents: (documents as Document[]) ?? [],
     summary: summary as Summary | null,
     flashcards: (flashcards as Flashcard[]) ?? [],
@@ -50,8 +62,11 @@ export default async function GroupDetailPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
+  const appUser = await getAppUser();
+  if (!appUser) notFound();
+
   const { group, documents, summary, flashcards, quiz, initialMessages } =
-    await getGroupData(groupId);
+    await getGroupData(groupId, appUser.supabaseUserId);
 
   if (!group) notFound();
 
