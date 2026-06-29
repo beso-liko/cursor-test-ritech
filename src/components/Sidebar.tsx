@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   FileText,
@@ -10,7 +11,6 @@ import {
   Brain,
   Zap,
   GraduationCap,
-  LogOut,
   Settings,
   Sun,
   Moon,
@@ -19,8 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useTheme } from "@/components/ThemeProvider";
-import { createBrowserClient } from "@/lib/supabase/client";
-import { useEffect, useState } from "react";
+import AuthControls from "@/components/AuthControls";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -28,33 +27,14 @@ interface SidebarProps {
 
 export default function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { t, locale, setLocale } = useLanguage();
   const { theme, setTheme } = useTheme();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const { user } = useUser();
 
-  useEffect(() => {
-    const supabase = createBrowserClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserEmail(user?.email ?? null);
-    });
-    fetch("/api/account")
-      .then((r) => r.json())
-      .then((data) => {
-        const first = data.first_name?.trim() ?? "";
-        const last = data.last_name?.trim() ?? "";
-        const full = [first, last].filter(Boolean).join(" ");
-        setDisplayName(full || null);
-      })
-      .catch(() => {});
-  }, []);
-
-  const handleSignOut = async () => {
-    const supabase = createBrowserClient();
-    await supabase.auth.signOut();
-    router.push("/auth/login");
-  };
+  const displayName =
+    user?.fullName ||
+    user?.primaryEmailAddress?.emailAddress ||
+    null;
 
   const navItems = [
     {
@@ -247,20 +227,14 @@ export default function Sidebar({ onClose }: SidebarProps) {
         </div>
       </div>
 
-      {/* User + Sign out */}
+      {/* User account */}
       <div className="px-4 py-4 border-t border-sidebar-border">
         <div className="flex items-center gap-2 px-1 min-w-0">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-            {displayName ?? userEmail ?? t("sidebar.footer")}
+            {displayName ?? t("sidebar.footer")}
           </span>
-          <button
-            onClick={handleSignOut}
-            title="Sign out"
-            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
+          <AuthControls />
         </div>
       </div>
     </aside>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { GraduationCap, Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import AuthControls from "@/components/AuthControls";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -42,14 +43,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-primary to-orange-700 flex items-center justify-center shrink-0 shadow-sm shadow-primary/40">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-extrabold text-sm text-foreground tracking-tight">
+            <span className="font-extrabold text-sm text-foreground tracking-tight truncate">
               {t("sidebar.brand")}
             </span>
           </div>
+          <AuthControls />
         </header>
 
         <main className="flex-1 overflow-auto">{children}</main>

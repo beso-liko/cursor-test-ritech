@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/components/LanguageProvider";
@@ -49,11 +51,13 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <ThemeProvider>
-          <LanguageProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+        <ClerkProvider appearance={{ theme: shadcn }}>
+          <ThemeProvider>
+            <LanguageProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+            </LanguageProvider>
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
