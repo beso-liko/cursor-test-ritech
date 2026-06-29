@@ -51,7 +51,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <ClerkProvider appearance={{ theme: shadcn }}>
+        <ClerkProvider
+          appearance={{ theme: shadcn }}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+        >
           <ThemeProvider>
             <LanguageProvider>
               <TooltipProvider>{children}</TooltipProvider>

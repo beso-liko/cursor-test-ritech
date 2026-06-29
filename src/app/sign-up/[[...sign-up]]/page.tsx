@@ -1,5 +1,5 @@
-import { SignUp } from "@clerk/nextjs";
 import { GraduationCap } from "lucide-react";
+import ClerkSignUpPanel from "@/components/ClerkSignUpPanel";
 
 export default function SignUpPage() {
   return (
@@ -17,7 +17,7 @@ export default function SignUpPage() {
           </p>
         </div>
       </div>
-      <SignUp />
+      <ClerkSignUpPanel />
     </div>
   );
 }
