@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
-  retrieveContextWithScores,
-  retrieveContextForDocumentsWithScores,
+  isBroadDocumentQuestion,
+  retrieveChatContext,
+  retrieveChatContextForDocuments,
 } from "@/lib/langchain/rag-chain";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
@@ -11,12 +12,29 @@ import { getOwnedDocument, getOwnedGroup } from "@/lib/supabase/user-queries";
 
 export const maxDuration = 60;
 
-// Minimum cosine similarity score used as a last-resort safety net.
-// Keep this LOW (0.15) — the hardened system prompt is the primary guardrail.
-// Generic meta-questions ("summarize", "what is this about") score around 0.20-0.30
-// against specific content, so a high threshold wrongly blocks them.
-// Only truly unrelated queries (sports results, weather, etc.) score below 0.15.
+// Last-resort block for clearly unrelated queries with no retrieved context.
 const RELEVANCE_THRESHOLD = 0.15;
+
+function buildSystemPrompt(sourceDesc: string, context: string, langLine: string): string {
+  return `You are a study assistant helping the student understand their uploaded ${sourceDesc}.
+Use the context below to answer clearly and concisely. You should help with:
+- Summaries and overviews
+- Explaining the most important topics, themes, and key concepts
+- Specific questions about details in the material
+- Clarifying definitions and relationships between ideas
+
+Broad questions like "summarize the main idea", "what are the key concepts?", or \
+"explain the most important topic" are always in scope — answer them using the context.
+
+Only decline if the question is clearly unrelated to the uploaded study material \
+(e.g. weather, sports, news, or general trivia with no connection to the document). \
+In that case, politely explain that you can only help with their uploaded study material.
+
+Use markdown formatting when it improves readability.${langLine}
+
+Context from ${sourceDesc}:
+${context}`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,6 +65,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userMessage = messages[messages.length - 1]?.content ?? "";
+    const isBroadQuestion = isBroadDocumentQuestion(userMessage);
 
     let docsWithScores: [{ pageContent: string; metadata: Record<string, unknown> }, number][];
 
@@ -67,17 +86,23 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      docsWithScores = await retrieveContextForDocumentsWithScores(userMessage, docIds, 5, user.supabaseUserId);
+      docsWithScores = await retrieveChatContextForDocuments(
+        userMessage,
+        docIds,
+        user.supabaseUserId
+      );
     } else {
-      docsWithScores = await retrieveContextWithScores(userMessage, documentId, 5, user.supabaseUserId);
+      docsWithScores = await retrieveChatContext(userMessage, documentId, user.supabaseUserId);
     }
 
-    // Layer 1 guardrail: reject questions with no meaningful similarity to the document.
-    const maxScore = docsWithScores.length > 0
-      ? Math.max(...docsWithScores.map(([, score]) => score))
-      : 0;
+    if (docsWithScores.length === 0) {
+      return new Response(JSON.stringify({ error: "off_topic" }), { status: 422 });
+    }
 
-    if (maxScore < RELEVANCE_THRESHOLD) {
+    const maxScore = Math.max(...docsWithScores.map(([, score]) => score));
+
+    // Broad document questions and chat inside a document view are assumed in-scope.
+    if (!isBroadQuestion && maxScore < RELEVANCE_THRESHOLD) {
       return new Response(JSON.stringify({ error: "off_topic" }), { status: 422 });
     }
 
@@ -89,23 +114,12 @@ export async function POST(req: NextRequest) {
         : "";
 
     const sourceDesc = groupId
-      ? "their study materials (multiple documents)"
-      : "their document";
+      ? "study materials (multiple documents)"
+      : "document";
 
-    // Layer 2 guardrail: explicit refusal instruction in the system prompt.
     const result = streamText({
       model: openai("gpt-4o-mini"),
-      system: `You are a study assistant strictly scoped to the provided document(s).
-You MUST ONLY answer questions that are directly about the content in the context below.
-If a question is not answerable from the context — including general knowledge, current events, \
-or anything unrelated to the document — respond with exactly:
-"I can only answer questions about the uploaded material. This question appears to be outside that scope."
-Do not attempt to answer off-topic questions under any circumstances.
-Answer questions clearly and concisely based on the provided context.
-Use markdown formatting for better readability when appropriate.${langLine}
-
-Relevant context from ${sourceDesc}:
-${context}`,
+      system: buildSystemPrompt(sourceDesc, context, langLine),
       messages,
       temperature: 0.3,
     });

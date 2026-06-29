@@ -30,6 +30,109 @@ export async function retrieveContext(
 
 type ScoredDoc = [{ pageContent: string; metadata: Record<string, unknown> }, number];
 
+const BROAD_RETRIEVAL_QUERY =
+  "main topics summary overview key concepts important themes central ideas";
+
+/** Broad questions about the document itself (summaries, key topics, etc.). */
+export function isBroadDocumentQuestion(query: string): boolean {
+  const normalized = query.toLowerCase().trim();
+  if (!normalized) return false;
+
+  return (
+    /\b(summari[sz]e|summary|overview|main idea|key concept|important topic|most important|core theme|central theme|big picture|what is this about|what's this about|tell me about this|explain this document|explain the document)\b/i.test(
+      normalized
+    ) ||
+    /\b(përmbledh|përmbledhni|ide(kryesore)?|konceptet kryesore|tema më e rëndësishme|temën më të rëndësishme|çfarë është)\b/i.test(
+      normalized
+    )
+  );
+}
+
+function mergeScoredDocs(...resultSets: ScoredDoc[][]): ScoredDoc[] {
+  const byContent = new Map<string, ScoredDoc>();
+
+  for (const results of resultSets) {
+    for (const doc of results) {
+      const key = doc[0].pageContent;
+      const existing = byContent.get(key);
+      if (!existing || doc[1] > existing[1]) {
+        byContent.set(key, doc);
+      }
+    }
+  }
+
+  return [...byContent.values()].sort((a, b) => b[1] - a[1]);
+}
+
+export async function retrieveChatContext(
+  query: string,
+  documentId: string,
+  userId?: string,
+  topK = 8
+): Promise<ScoredDoc[]> {
+  const specific = await retrieveContextWithScores(query, documentId, topK, userId);
+
+  if (isBroadDocumentQuestion(query)) {
+    const broad = await retrieveContextWithScores(
+      BROAD_RETRIEVAL_QUERY,
+      documentId,
+      topK,
+      userId
+    );
+    return mergeScoredDocs(broad, specific).slice(0, topK);
+  }
+
+  const maxScore = specific.length > 0 ? Math.max(...specific.map(([, score]) => score)) : 0;
+  if (maxScore < 0.15) {
+    const broad = await retrieveContextWithScores(
+      BROAD_RETRIEVAL_QUERY,
+      documentId,
+      topK,
+      userId
+    );
+    return mergeScoredDocs(broad, specific).slice(0, topK);
+  }
+
+  return specific;
+}
+
+export async function retrieveChatContextForDocuments(
+  query: string,
+  documentIds: string[],
+  userId?: string,
+  topK = 10
+): Promise<ScoredDoc[]> {
+  const specific = await retrieveContextForDocumentsWithScores(
+    query,
+    documentIds,
+    topK,
+    userId
+  );
+
+  if (isBroadDocumentQuestion(query)) {
+    const broad = await retrieveContextForDocumentsWithScores(
+      BROAD_RETRIEVAL_QUERY,
+      documentIds,
+      topK,
+      userId
+    );
+    return mergeScoredDocs(broad, specific).slice(0, topK);
+  }
+
+  const maxScore = specific.length > 0 ? Math.max(...specific.map(([, score]) => score)) : 0;
+  if (maxScore < 0.15) {
+    const broad = await retrieveContextForDocumentsWithScores(
+      BROAD_RETRIEVAL_QUERY,
+      documentIds,
+      topK,
+      userId
+    );
+    return mergeScoredDocs(broad, specific).slice(0, topK);
+  }
+
+  return specific;
+}
+
 export async function retrieveContextWithScores(
   query: string,
   documentId: string,
