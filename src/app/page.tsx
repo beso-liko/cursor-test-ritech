@@ -1,4 +1,3 @@
-import { createAuthClient } from "@/lib/supabase/server";
 import AppShell from "@/components/AppShell";
 import DashboardContent from "@/components/DashboardContent";
 import { getAppUser } from "@/lib/auth/app-user";
