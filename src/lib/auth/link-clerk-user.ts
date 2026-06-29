@@ -128,6 +128,26 @@ async function loadProfileEmailMap(admin: AdminClient): Promise<Map<string, stri
   return map;
 }
 
+async function findSupabaseUserByProfileEmail(
+  admin: AdminClient,
+  clerkEmails: string[]
+): Promise<User | null> {
+  for (const email of normalizeEmails(clerkEmails)) {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (!profile) continue;
+
+    const { data } = await admin.auth.admin.getUserById(profile.id);
+    if (data.user) return data.user;
+  }
+
+  return null;
+}
+
 async function findProfileByClerkId(admin: AdminClient, clerkUserId: string) {
   const { data } = await admin
     .from("profiles")
@@ -238,6 +258,11 @@ export async function linkClerkToSupabase(
   if (clerkEmails.length === 0) return null;
 
   const admin = createAdminClient();
+  const profileMatch = await findSupabaseUserByProfileEmail(admin, clerkEmails);
+  if (profileMatch) {
+    return linkSupabaseUser(admin, identity, profileMatch);
+  }
+
   const profileEmails = await loadProfileEmailMap(admin);
   const matches = await findSupabaseMatches(
     admin,
