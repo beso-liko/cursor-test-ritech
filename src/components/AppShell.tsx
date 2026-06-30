@@ -4,6 +4,7 @@ import { useState } from "react";
 import { GraduationCap, Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import AuthControls from "@/components/AuthControls";
+import LegalFooterLinks from "@/components/LegalFooterLinks";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -54,7 +55,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <AuthControls />
         </header>
 
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto">
+          {children}
+          <LegalFooterLinks />
+        </main>
       </div>
     </div>
   );

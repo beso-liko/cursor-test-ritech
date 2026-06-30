@@ -5,3 +5,11 @@ export function getMarketingUrl(): string {
 export function marketingContactUrl(): string {
   return `${getMarketingUrl()}/contact`;
 }
+
+export function marketingPrivacyUrl(): string {
+  return `${getMarketingUrl()}/privacy`;
+}
+
+export function marketingTermsUrl(): string {
+  return `${getMarketingUrl()}/terms`;
+}
