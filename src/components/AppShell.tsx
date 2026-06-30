@@ -5,7 +5,7 @@ import { GraduationCap, Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import AuthControls from "@/components/AuthControls";
 import LegalFooterLinks from "@/components/LegalFooterLinks";
-import { NotesProvider, useNotesOptional } from "@/components/notes/NotesProvider";
+import { useNotesOptional } from "@/components/notes/NotesProvider";
 import NotesShell from "@/components/notes/NotesShell";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -82,9 +82,5 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  return (
-    <NotesProvider>
-      <AppShellInner>{children}</AppShellInner>
-    </NotesProvider>
-  );
+  return <AppShellInner>{children}</AppShellInner>;
 }

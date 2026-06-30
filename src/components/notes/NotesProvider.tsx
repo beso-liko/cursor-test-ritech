@@ -10,10 +10,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Note } from "@/lib/supabase/types";
+import type { Note, NoteFolder } from "@/lib/supabase/types";
 
 export const MAX_OPEN_NOTES = 6;
 const OPEN_NOTES_KEY = "studybuddy-open-notes";
+const DOCK_OPEN_KEY = "studybuddy-notes-dock-open";
+const FOCUSED_NOTE_KEY = "studybuddy-notes-focused-id";
 
 type SaveStatus = "idle" | "saving" | "saved";
 type InsertHandler = (text: string) => void;
@@ -21,6 +23,8 @@ type InsertHandler = (text: string) => void;
 interface NotesContextValue {
   notes: Note[];
   notesById: Record<string, Note>;
+  folders: NoteFolder[];
+  foldersById: Record<string, NoteFolder>;
   openNoteIds: string[];
   focusedNoteId: string | null;
   isDockOpen: boolean;
@@ -29,7 +33,8 @@ interface NotesContextValue {
   maxNotesToast: string | null;
   loading: boolean;
   refreshNotes: () => Promise<void>;
-  createNote: () => Promise<string | null>;
+  refreshFolders: () => Promise<void>;
+  createNote: (folderId?: string | null) => Promise<string | null>;
   openNote: (id: string) => Promise<void>;
   closeNote: (id: string) => void;
   closeAllNotes: () => void;
@@ -42,6 +47,10 @@ interface NotesContextValue {
   registerEditorInsert: (noteId: string, handler: InsertHandler) => void;
   unregisterEditorInsert: (noteId: string) => void;
   deleteNote: (id: string) => Promise<boolean>;
+  createFolder: (name: string) => Promise<NoteFolder | null>;
+  renameFolder: (id: string, name: string) => Promise<boolean>;
+  deleteFolder: (id: string) => Promise<boolean>;
+  moveNoteToFolder: (noteId: string, folderId: string | null) => Promise<boolean>;
   clearMaxNotesToast: () => void;
 }
 
@@ -59,8 +68,29 @@ function readStoredOpenIds(): string[] {
   }
 }
 
+function readStoredDockOpen(): boolean | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DOCK_OPEN_KEY);
+    if (raw == null) return null;
+    return JSON.parse(raw) === true;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredFocusedId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(FOCUSED_NOTE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function NotesProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [folders, setFolders] = useState<NoteFolder[]>([]);
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
   const [isDockOpen, setDockOpen] = useState(false);
@@ -69,33 +99,55 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const [maxNotesToast, setMaxNotesToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const insertHandlers = useRef<Map<string, InsertHandler>>(new Map());
-  const hydrated = useRef(false);
+  const [storageReady, setStorageReady] = useState(false);
 
   const notesById = useMemo(
     () => Object.fromEntries(notes.map((note) => [note.id, note])),
     [notes]
   );
 
+  const foldersById = useMemo(
+    () => Object.fromEntries(folders.map((folder) => [folder.id, folder])),
+    [folders]
+  );
+
   const refreshNotes = useCallback(async () => {
     const res = await fetch("/api/notes");
     if (!res.ok) return;
     const data = (await res.json()) as Note[];
-    setNotes(data);
+    setNotes(
+      data.map((note) => ({
+        ...note,
+        folder_id: note.folder_id ?? null,
+      }))
+    );
+  }, []);
+
+  const refreshFolders = useCallback(async () => {
+    const res = await fetch("/api/note-folders");
+    if (!res.ok) return;
+    const data = (await res.json()) as NoteFolder[];
+    setFolders(data);
   }, []);
 
   useEffect(() => {
-    refreshNotes().finally(() => setLoading(false));
-  }, [refreshNotes]);
+    Promise.all([refreshNotes(), refreshFolders()]).finally(() => setLoading(false));
+  }, [refreshNotes, refreshFolders]);
 
   useEffect(() => {
-    if (hydrated.current) return;
-    hydrated.current = true;
     const stored = readStoredOpenIds();
     if (stored.length > 0) {
+      const storedFocused = readStoredFocusedId();
+      const validFocused =
+        storedFocused && stored.includes(storedFocused)
+          ? storedFocused
+          : (stored[stored.length - 1] ?? null);
       setOpenNoteIds(stored);
-      setFocusedNoteId(stored[stored.length - 1] ?? null);
-      setDockOpen(true);
+      setFocusedNoteId(validFocused);
+      const storedDockOpen = readStoredDockOpen();
+      setDockOpen(storedDockOpen ?? true);
     }
+    setStorageReady(true);
   }, []);
 
   useEffect(() => {
@@ -124,9 +176,23 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   }, [loading, openNoteIds, notesById]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!storageReady || typeof window === "undefined") return;
     sessionStorage.setItem(OPEN_NOTES_KEY, JSON.stringify(openNoteIds));
-  }, [openNoteIds]);
+  }, [openNoteIds, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady || typeof window === "undefined") return;
+    sessionStorage.setItem(DOCK_OPEN_KEY, JSON.stringify(isDockOpen));
+  }, [isDockOpen, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady || typeof window === "undefined") return;
+    if (focusedNoteId) {
+      sessionStorage.setItem(FOCUSED_NOTE_KEY, focusedNoteId);
+    } else {
+      sessionStorage.removeItem(FOCUSED_NOTE_KEY);
+    }
+  }, [focusedNoteId, storageReady]);
 
   const setSaveStatus = useCallback((id: string, status: SaveStatus) => {
     setSaveStatusState((prev) => ({ ...prev, [id]: status }));
@@ -162,16 +228,21 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     [notesById]
   );
 
-  const createNote = useCallback(async () => {
+  const createNote = useCallback(async (folderId?: string | null) => {
     if (openNoteIds.length >= MAX_OPEN_NOTES) {
       setMaxNotesToast("max");
       return null;
     }
 
+    const body: Record<string, unknown> = { title: "Untitled" };
+    if (folderId) {
+      body.folder_id = folderId;
+    }
+
     const res = await fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Untitled" }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) return null;
@@ -230,12 +301,76 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     [closeNote]
   );
 
+  const createFolder = useCallback(async (name: string) => {
+    const res = await fetch("/api/note-folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return null;
+    const folder = (await res.json()) as NoteFolder;
+    setFolders((prev) =>
+      [...prev.filter((f) => f.id !== folder.id), folder].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )
+    );
+    return folder;
+  }, []);
+
+  const renameFolder = useCallback(async (id: string, name: string) => {
+    const res = await fetch(`/api/note-folders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return false;
+    const updated = (await res.json()) as NoteFolder;
+    setFolders((prev) =>
+      prev
+        .map((folder) => (folder.id === id ? updated : folder))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    );
+    return true;
+  }, []);
+
+  const deleteFolder = useCallback(async (id: string) => {
+    const res = await fetch(`/api/note-folders/${id}`, { method: "DELETE" });
+    if (!res.ok) return false;
+    setFolders((prev) => prev.filter((folder) => folder.id !== id));
+    setNotes((prev) =>
+      prev.map((note) =>
+        note.folder_id === id ? { ...note, folder_id: null } : note
+      )
+    );
+    return true;
+  }, []);
+
+  const moveNoteToFolder = useCallback(
+    async (noteId: string, folderId: string | null) => {
+      const res = await fetch(`/api/notes/${noteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_id: folderId }),
+      });
+      if (!res.ok) return false;
+      const updated = (await res.json()) as Note;
+      updateNoteLocal(noteId, {
+        folder_id: updated.folder_id,
+        updated_at: updated.updated_at,
+      });
+      return true;
+    },
+    [updateNoteLocal]
+  );
+
   const clearMaxNotesToast = useCallback(() => setMaxNotesToast(null), []);
 
   const value = useMemo<NotesContextValue>(
     () => ({
       notes,
       notesById,
+      folders,
+      foldersById,
       openNoteIds,
       focusedNoteId,
       isDockOpen,
@@ -244,6 +379,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       maxNotesToast,
       loading,
       refreshNotes,
+      refreshFolders,
       createNote,
       openNote,
       closeNote,
@@ -257,11 +393,17 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       registerEditorInsert,
       unregisterEditorInsert,
       deleteNote,
+      createFolder,
+      renameFolder,
+      deleteFolder,
+      moveNoteToFolder,
       clearMaxNotesToast,
     }),
     [
       notes,
       notesById,
+      folders,
+      foldersById,
       openNoteIds,
       focusedNoteId,
       isDockOpen,
@@ -270,6 +412,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       maxNotesToast,
       loading,
       refreshNotes,
+      refreshFolders,
       createNote,
       openNote,
       closeNote,
@@ -280,6 +423,10 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       registerEditorInsert,
       unregisterEditorInsert,
       deleteNote,
+      createFolder,
+      renameFolder,
+      deleteFolder,
+      moveNoteToFolder,
       clearMaxNotesToast,
     ]
   );

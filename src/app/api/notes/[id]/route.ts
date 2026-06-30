@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getOwnedNote } from "@/lib/supabase/note-queries";
+import { getOwnedNote, getOwnedNoteFolder } from "@/lib/supabase/note-queries";
 
 export async function GET(
   _req: NextRequest,
@@ -49,6 +49,19 @@ export async function PATCH(
     }
     if (body.drawing_data !== undefined) {
       update.drawing_data = body.drawing_data;
+    }
+    if (body.folder_id !== undefined) {
+      if (body.folder_id === null) {
+        update.folder_id = null;
+      } else if (typeof body.folder_id === "string") {
+        const folder = await getOwnedNoteFolder(auth.user.supabaseUserId, body.folder_id);
+        if (!folder) {
+          return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+        }
+        update.folder_id = body.folder_id;
+      } else {
+        return NextResponse.json({ error: "Invalid folder_id" }, { status: 400 });
+      }
     }
 
     if (Object.keys(update).length <= 1) {

@@ -8,6 +8,7 @@ import { LanguageProvider } from "@/components/LanguageProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import ThemeInitScript from "@/components/ThemeInitScript";
+import { NotesProvider } from "@/components/notes/NotesProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -54,7 +55,9 @@ export default function RootLayout({
         >
           <ThemeProvider>
             <LanguageProvider>
-              <TooltipProvider>{children}</TooltipProvider>
+              <NotesProvider>
+                <TooltipProvider>{children}</TooltipProvider>
+              </NotesProvider>
             </LanguageProvider>
           </ThemeProvider>
         </ClerkProvider>
