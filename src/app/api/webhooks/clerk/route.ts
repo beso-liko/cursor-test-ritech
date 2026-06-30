@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
+import {
+  deleteUserAccountBySupabaseId,
+  findSupabaseUserIdByClerkId,
+} from "@/lib/auth/delete-user-account";
 import { linkClerkToSupabase } from "@/lib/auth/link-clerk-user";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   let event;
@@ -25,6 +30,17 @@ export async function POST(req: NextRequest) {
         firstName: first_name ?? null,
         lastName: last_name ?? null,
       });
+    }
+  }
+
+  if (event.type === "user.deleted") {
+    const clerkUserId = event.data.id;
+    if (clerkUserId) {
+      const admin = createAdminClient();
+      const supabaseUserId = await findSupabaseUserIdByClerkId(admin, clerkUserId);
+      if (supabaseUserId) {
+        await deleteUserAccountBySupabaseId(admin, supabaseUserId);
+      }
     }
   }
 

@@ -34,3 +34,8 @@ export async function deleteDocumentVectors(documentId: string): Promise<void> {
   const index = getPineconeIndex();
   await index.deleteMany({ documentId } as Record<string, string>);
 }
+
+export async function deleteUserVectors(userId: string): Promise<void> {
+  const index = getPineconeIndex();
+  await index.deleteMany({ userId } as Record<string, string>);
+}

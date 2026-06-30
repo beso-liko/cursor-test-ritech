@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clerkClient } from "@clerk/nextjs/server";
+import { deleteUserAccount } from "@/lib/auth/delete-user-account";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -9,14 +9,15 @@ export async function DELETE() {
     if (auth instanceof NextResponse) return auth;
 
     const admin = createAdminClient();
-    const { error } = await admin.auth.admin.deleteUser(auth.user.supabaseUserId);
+    const result = await deleteUserAccount(
+      admin,
+      auth.user.supabaseUserId,
+      auth.user.clerkUserId
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
-
-    const client = await clerkClient();
-    await client.users.deleteUser(auth.user.clerkUserId);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
