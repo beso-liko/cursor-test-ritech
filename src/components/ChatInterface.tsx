@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
+import SelectableContent from "@/components/notes/SelectableContent";
 
 interface ChatInterfaceProps {
   documentId?: string;
@@ -176,7 +177,7 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
             </div>
           </div>
         ) : (
-          <div className="space-y-4 py-4">
+          <SelectableContent className="space-y-4 py-4">
             {messages.map((msg: Message) => (
               <div
                 key={msg.id}
@@ -218,7 +219,7 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
               </div>
             )}
             <div ref={bottomRef} />
-          </div>
+          </SelectableContent>
         )}
       </ScrollArea>
 

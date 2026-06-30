@@ -5,12 +5,18 @@ import { GraduationCap, Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import AuthControls from "@/components/AuthControls";
 import LegalFooterLinks from "@/components/LegalFooterLinks";
+import { NotesProvider, useNotesOptional } from "@/components/notes/NotesProvider";
+import NotesShell from "@/components/notes/NotesShell";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { t } = useLanguage();
+  const notes = useNotesOptional();
+  const dockOpen = notes?.isDockOpen && (notes.openNoteIds.length ?? 0) > 0;
+  const notesMinimized =
+    (notes?.openNoteIds.length ?? 0) > 0 && !notes?.isDockOpen;
 
   return (
     <div className="flex min-h-screen">
@@ -34,7 +40,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main area */}
-      <div className="flex flex-1 flex-col min-w-0">
+      <div
+        className={cn(
+          "flex flex-1 flex-col min-w-0 transition-[padding] duration-200",
+          dockOpen && "lg:pr-80 xl:pr-96"
+        )}
+      >
         {/* Mobile/tablet top bar */}
         <header className="lg:hidden sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background px-4 shrink-0">
           <button
@@ -55,11 +66,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <AuthControls />
         </header>
 
-        <main className="flex-1 overflow-auto">
+        <main
+          className={cn(
+            "flex-1 overflow-auto",
+            notesMinimized && "pb-24 lg:pb-0"
+          )}
+        >
           {children}
           <LegalFooterLinks />
         </main>
+        <NotesShell />
       </div>
     </div>
+  );
+}
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <NotesProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </NotesProvider>
   );
 }

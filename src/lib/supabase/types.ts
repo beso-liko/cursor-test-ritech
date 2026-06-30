@@ -77,3 +77,19 @@ export interface ChatSession {
   messages: ChatMessage[];
   updated_at: string;
 }
+
+export interface Note {
+  id: string;
+  user_id: string;
+  title: string;
+  content: Record<string, unknown>;
+  drawing_data: DrawingStroke[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DrawingStroke {
+  points: number[][];
+  color: string;
+  size: number;
+}

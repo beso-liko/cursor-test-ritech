@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/components/LanguageProvider";
 import type { Summary } from "@/lib/supabase/types";
+import SelectableContent from "@/components/notes/SelectableContent";
 
 interface ParsedSummary {
   summary: string;
@@ -78,7 +79,7 @@ export default function SummaryPanel({
   const parsed = parseSummaryContent(summary.content);
 
   return (
-    <div className="space-y-6">
+    <SelectableContent className="space-y-6">
       {/* Summary text */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -150,6 +151,6 @@ export default function SummaryPanel({
           {t("summary.generate")}
         </Button>
       </div>
-    </div>
+    </SelectableContent>
   );
 }

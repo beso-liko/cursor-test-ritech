@@ -21,6 +21,12 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+const defaultLanguageValue: LanguageContextValue = {
+  locale: "en",
+  setLocale: () => {},
+  t: (key, vars) => translate("en", key, vars),
+};
+
 function translate(
   locale: Locale,
   key: keyof (typeof translations)["en"],
@@ -73,6 +79,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
 export function useLanguage(): LanguageContextValue {
   const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used inside LanguageProvider");
-  return ctx;
+  if (ctx) return ctx;
+
+  // Dev HMR can briefly remount children before LanguageProvider is ready.
+  if (process.env.NODE_ENV === "development") {
+    return defaultLanguageValue;
+  }
+
+  throw new Error("useLanguage must be used inside LanguageProvider");
 }
