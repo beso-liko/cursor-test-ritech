@@ -15,11 +15,13 @@ import {
   Sun,
   Moon,
   X,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import AuthControls from "@/components/AuthControls";
+import { marketingContactUrl } from "@/lib/site-links";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -60,6 +62,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
       label: t("sidebar.nav.account"),
       icon: Settings,
       description: t("sidebar.nav.account.desc"),
+    },
+    {
+      href: marketingContactUrl(),
+      label: t("sidebar.nav.contact"),
+      icon: Mail,
+      description: t("sidebar.nav.contact.desc"),
+      external: true,
     },
   ];
 
@@ -104,21 +113,19 @@ export default function Sidebar({ onClose }: SidebarProps) {
         <p className="text-xs font-semibold text-muted-foreground px-3 mb-2 uppercase tracking-widest">
           {t("sidebar.nav.label")}
         </p>
-        {navItems.map(({ href, label, icon: Icon, description }) => {
+        {navItems.map(({ href, label, icon: Icon, description, external }) => {
           const active =
-            href === "/" ? pathname === "/" : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group",
-                active
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
+            !external &&
+            (href === "/" ? pathname === "/" : pathname.startsWith(href));
+          const className = cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group",
+            active
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          );
+
+          const content = (
+            <>
               <div
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
@@ -142,6 +149,25 @@ export default function Sidebar({ onClose }: SidebarProps) {
                   {description}
                 </p>
               </div>
+            </>
+          );
+
+          if (external) {
+            return (
+              <a
+                key={href}
+                href={href}
+                onClick={onClose}
+                className={className}
+              >
+                {content}
+              </a>
+            );
+          }
+
+          return (
+            <Link key={href} href={href} onClick={onClose} className={className}>
+              {content}
             </Link>
           );
         })}
