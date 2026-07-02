@@ -21,7 +21,36 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      - run: npm run test:e2e
+      # Secrets are empty when not configured in repo Settings → Secrets and variables → Actions.
+      - name: Check E2E credentials
+        id: e2e
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          missing=()
+          for key in CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY E2E_CLERK_USER_EMAIL E2E_CLERK_USER_PASSWORD NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!key}" ]; then
+              missing+=("$key")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::E2E tests skipped — configure GitHub Actions secrets: ${missing[*]}"
+            echo "Use Clerk test keys (pk_test_/sk_test_) and a dedicated +clerk_test E2E user."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run E2E tests
+        if: steps.e2e.outputs.configured == 'true'
+        run: npm run test:e2e
         env:
           CI: true
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
@@ -33,7 +62,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && steps.e2e.outputs.configured == 'true'
         with:
           name: playwright-report
           path: |

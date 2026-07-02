@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "path";
+import { getWebServerEnv } from "./e2e/ci-env";
 import { loadTestEnv } from "./e2e/load-env";
 
 loadTestEnv();
@@ -27,6 +28,7 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: getWebServerEnv(PORT),
   },
   projects: [
     {
