@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
+import { isAtUploadCap, isUploadLimitAtCapError } from "@/lib/upload/is-at-cap";
 
 const ACCEPTED_TYPES: Record<string, string> = {
   "application/pdf": "pdf",
@@ -73,6 +74,17 @@ async function fetchUploadUsage(): Promise<UploadUsage | null> {
   return res.json();
 }
 
+function LimitReachedNotice({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+      <p className="text-sm font-medium text-amber-800 dark:text-amber-300 flex items-start gap-2">
+        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <span>{message}</span>
+      </p>
+    </div>
+  );
+}
+
 export default function FileUploader() {
   const router = useRouter();
   const { t } = useLanguage();
@@ -90,6 +102,12 @@ export default function FileUploader() {
   useEffect(() => {
     void refreshUsage();
   }, [refreshUsage]);
+
+  useEffect(() => {
+    if (!isAtUploadCap(usage)) return;
+    setGlobalError(null);
+    setGlobalStatus((status) => (status === "error" ? "idle" : status));
+  }, [usage]);
 
   const updateEntry = useCallback(
     (id: string, patch: Partial<FileEntry>) =>
@@ -122,9 +140,13 @@ export default function FileUploader() {
 
       setEntries((prev) => [...prev, ...newEntries]);
 
-      if (typeError) setGlobalError(t("uploader.error.type"));
-      else if (sizeError) setGlobalError(t("uploader.error.size", { max: MAX_SIZE_MB }));
-      else setGlobalError(null);
+      if (typeError) {
+        setGlobalError(t("uploader.error.type"));
+      } else if (sizeError) {
+        setGlobalError(t("uploader.error.size", { max: MAX_SIZE_MB }));
+      } else {
+        setGlobalError(null);
+      }
     },
     [t]
   );
@@ -166,6 +188,34 @@ export default function FileUploader() {
       return;
     }
 
+    const latestUsage = await fetchUploadUsage();
+    if (latestUsage) setUsage(latestUsage);
+
+    if (isAtUploadCap(latestUsage ?? usage)) {
+      setGlobalStatus("idle");
+      return;
+    }
+
+    const activeUsage = latestUsage ?? usage;
+    if (
+      activeUsage &&
+      !activeUsage.unlimited &&
+      activeUsage.remaining != null &&
+      activeUsage.limit != null &&
+      entries.length > activeUsage.remaining
+    ) {
+      setGlobalError(
+        t("uploader.limit.batchExceeded", {
+          remaining: activeUsage.remaining,
+          used: activeUsage.used,
+          limit: activeUsage.limit,
+          selected: entries.length,
+        })
+      );
+      setGlobalStatus("error");
+      return;
+    }
+
     const timezone = getBrowserTimezone();
     const reserveRes = await fetch("/api/upload/reserve", {
       method: "POST",
@@ -175,10 +225,38 @@ export default function FileUploader() {
 
     if (!reserveRes.ok) {
       const err = await reserveRes.json().catch(() => ({}));
-      setGlobalError(err.error ?? "Upload limit reached.");
-      setGlobalStatus("error");
-      if (err.usage) setUsage({ ...err.usage, resetsOn: usage?.resetsOn ?? "" });
+      const nextUsage = err.usage
+        ? { ...err.usage, resetsOn: usage?.resetsOn ?? "" }
+        : null;
+
+      if (nextUsage) setUsage(nextUsage);
       else void refreshUsage();
+
+      if (isUploadLimitAtCapError(err, nextUsage ?? usage)) {
+        setGlobalError(null);
+        setGlobalStatus("idle");
+        return;
+      }
+
+      const limitUsage = nextUsage ?? usage;
+      if (
+        limitUsage &&
+        !limitUsage.unlimited &&
+        limitUsage.remaining != null &&
+        limitUsage.limit != null
+      ) {
+        setGlobalError(
+          t("uploader.limit.batchExceeded", {
+            remaining: limitUsage.remaining,
+            used: limitUsage.used,
+            limit: limitUsage.limit,
+            selected: entries.length,
+          })
+        );
+      } else {
+        setGlobalError(err.error ?? "Upload limit reached.");
+      }
+      setGlobalStatus("error");
       return;
     }
 
@@ -234,16 +312,19 @@ export default function FileUploader() {
   const isRunning = globalStatus === "running";
   const isDone = globalStatus === "done";
   const allIdle = entries.length > 0 && entries.every((e) => e.status === "idle");
-  const atLimit =
-    usage != null &&
-    !usage.unlimited &&
-    usage.remaining != null &&
-    usage.remaining <= 0;
+  const atLimit = isAtUploadCap(usage);
+  const limitReachedMessage =
+    usage && usage.limit != null
+      ? t("uploader.limit.reached", {
+          used: usage.used,
+          limit: usage.limit,
+        })
+      : null;
 
   return (
     <div className="space-y-4 max-w-xl">
       {usage && (
-        <div className="rounded-xl border border-border bg-card px-4 py-3">
+        <div className="rounded-xl border border-border bg-card px-4 py-3 space-y-2">
           <p className="text-sm font-medium text-foreground">
             {usage.unlimited
               ? t("uploader.usage.unlimited", { used: usage.used })
@@ -253,11 +334,15 @@ export default function FileUploader() {
                 })}
           </p>
           {!usage.unlimited && usage.resetsOn && (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground">
               {t("uploader.usage.resets", { date: usage.resetsOn })}
             </p>
           )}
         </div>
+      )}
+
+      {atLimit && limitReachedMessage && (
+        <LimitReachedNotice message={limitReachedMessage} />
       )}
 
       {!isRunning && !isDone && (
@@ -314,9 +399,9 @@ export default function FileUploader() {
         </div>
       )}
 
-      {globalError && (
+      {globalError && !atLimit && (
         <p className="text-xs text-destructive flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5" /> {globalError}
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {globalError}
         </p>
       )}
 

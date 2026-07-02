@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -24,6 +23,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import AuthControls from "@/components/AuthControls";
 import { marketingContactUrl } from "@/lib/site-links";
+import { useIsSuperuser } from "@/lib/auth/use-is-superuser";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -34,25 +34,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const { t, locale, setLocale } = useLanguage();
   const { theme, setTheme } = useTheme();
   const { user } = useUser();
-  const [isSuperuser, setIsSuperuser] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        setIsSuperuser(Boolean(data?.isSuperuser));
-      })
-      .catch(() => {
-        if (!cancelled) setIsSuperuser(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, user?.primaryEmailAddress?.emailAddress]);
+  const isSuperuser = useIsSuperuser();
 
   const displayName =
     user?.fullName ||

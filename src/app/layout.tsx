@@ -9,6 +9,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import ThemeInitScript from "@/components/ThemeInitScript";
 import { NotesProvider } from "@/components/notes/NotesProvider";
+import { SuperuserProvider } from "@/components/SuperuserProvider";
+import { getInitialIsSuperuser } from "@/lib/auth/get-initial-is-superuser";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -34,11 +36,13 @@ export const metadata: Metadata = {
     "Upload documents, generate summaries, flashcards, quizzes, and chat with your study materials using AI.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialIsSuperuser = await getInitialIsSuperuser();
+
   return (
     <html
       lang="en"
@@ -53,13 +57,15 @@ export default function RootLayout({
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >
-          <ThemeProvider>
-            <LanguageProvider>
-              <NotesProvider>
-                <TooltipProvider>{children}</TooltipProvider>
-              </NotesProvider>
-            </LanguageProvider>
-          </ThemeProvider>
+          <SuperuserProvider initialIsSuperuser={initialIsSuperuser}>
+            <ThemeProvider>
+              <LanguageProvider>
+                <NotesProvider>
+                  <TooltipProvider>{children}</TooltipProvider>
+                </NotesProvider>
+              </LanguageProvider>
+            </ThemeProvider>
+          </SuperuserProvider>
         </ClerkProvider>
       </body>
     </html>

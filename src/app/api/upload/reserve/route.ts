@@ -3,6 +3,7 @@ import { requireApiUser } from "@/lib/auth/require-api-user";
 import {
   formatLimitExceededMessage,
   reserveUploads,
+  type LimitExceededReason,
 } from "@/lib/upload/reserve";
 
 export async function POST(req: NextRequest) {
@@ -23,10 +24,12 @@ export async function POST(req: NextRequest) {
 
     if (!result.ok) {
       if (result.code === "LIMIT_EXCEEDED") {
+        const reason: LimitExceededReason = result.reason ?? "batch_exceeded";
         return NextResponse.json(
           {
             error: formatLimitExceededMessage(count, result.usage),
             usage: result.usage,
+            reason,
           },
           { status: 429 }
         );

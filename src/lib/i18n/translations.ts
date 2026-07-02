@@ -181,6 +181,10 @@ const en = {
   "uploader.usage.limited": "{used} / {limit} uploads used this month",
   "uploader.usage.unlimited": "{used} uploads this month (unlimited)",
   "uploader.usage.resets": "Resets on {date}",
+  "uploader.limit.reached":
+    "You have reached your monthly upload limit ({used}/{limit} used). Wait until next month or contact support.",
+  "uploader.limit.batchExceeded":
+    "You can only upload {remaining} more file(s) this month ({used}/{limit} used). You selected {selected} file(s). Remove files from this batch or wait until next month.",
 
   // Group detail page
   "group.title": "Study Set ({n} files)",
@@ -520,6 +524,10 @@ const sq: typeof en = {
   "uploader.usage.limited": "{used} / {limit} ngarkime të përdorura këtë muaj",
   "uploader.usage.unlimited": "{used} ngarkime këtë muaj (pa limit)",
   "uploader.usage.resets": "Rifillon më {date}",
+  "uploader.limit.reached":
+    "Keni arritur limitin mujor të ngarkimeve ({used}/{limit} të përdorura). Prisni deri muajin tjetër ose kontaktoni mbështetjen.",
+  "uploader.limit.batchExceeded":
+    "Mund të ngarkoni vetëm {remaining} skedar(ë) të tjerë këtë muaj ({used}/{limit} të përdorura). Keni zgjedhur {selected} skedar(ë). Hiqni skedarë nga kjo grupë ose prisni deri muajin tjetër.",
 
   // Group detail page
   "group.title": "Set Studimi ({n} skedarë)",
