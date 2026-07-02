@@ -1,26 +1,23 @@
 "use client";
 
 import { useAuth, useUser } from "@clerk/nextjs";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo } from "react";
 import { useInitialIsSuperuser } from "@/components/SuperuserProvider";
 import { isSuperuserFromClerkEmails } from "@/lib/auth/is-superuser";
 import {
+  clearLegacySuperuserCache,
   emailsFromSessionClaims,
-  readCachedSuperuserFlag,
-  subscribeToSuperuserCache,
-  writeCachedSuperuserFlag,
 } from "@/lib/auth/superuser-session";
 
-/** Superuser check: server seed, session cache, then Clerk session claims/user. */
+/** Superuser check scoped to the signed-in user only. */
 export function useIsSuperuser(): boolean {
   const initialIsSuperuser = useInitialIsSuperuser();
-  const cachedIsSuperuser = useSyncExternalStore(
-    subscribeToSuperuserCache,
-    readCachedSuperuserFlag,
-    () => false
-  );
-  const { sessionClaims, isLoaded: authLoaded } = useAuth();
+  const { sessionClaims, isLoaded: authLoaded, userId } = useAuth();
   const { user, isLoaded: userLoaded } = useUser();
+
+  useEffect(() => {
+    clearLegacySuperuserCache();
+  }, [userId]);
 
   const fromSessionClaims = useMemo(
     () =>
@@ -45,22 +42,9 @@ export function useIsSuperuser(): boolean {
     );
   }, [user]);
 
-  const resolved =
-    initialIsSuperuser ||
-    cachedIsSuperuser ||
-    (authLoaded && fromSessionClaims) ||
-    (userLoaded && fromUser);
-
-  useEffect(() => {
-    if (resolved) {
-      writeCachedSuperuserFlag(true);
-      return;
-    }
-
-    if (authLoaded && userLoaded) {
-      writeCachedSuperuserFlag(false);
-    }
-  }, [resolved, authLoaded, userLoaded]);
-
-  return resolved;
+  if (initialIsSuperuser) return true;
+  if (!userId) return false;
+  if (authLoaded && fromSessionClaims) return true;
+  if (userLoaded && fromUser) return true;
+  return false;
 }

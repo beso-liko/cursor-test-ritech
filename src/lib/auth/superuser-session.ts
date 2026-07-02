@@ -18,33 +18,12 @@ export function emailsFromSessionClaims(
   return candidates.filter((value): value is string => typeof value === "string");
 }
 
-const SUPERUSER_CACHE_KEY = "studybuddy:isSuperuser";
-
-export function readCachedSuperuserFlag(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return sessionStorage.getItem(SUPERUSER_CACHE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function writeCachedSuperuserFlag(isSuperuser: boolean): void {
+/** Remove legacy global superuser cache that could leak across accounts. */
+export function clearLegacySuperuserCache(): void {
   if (typeof window === "undefined") return;
   try {
-    if (isSuperuser) {
-      sessionStorage.setItem(SUPERUSER_CACHE_KEY, "1");
-    } else {
-      sessionStorage.removeItem(SUPERUSER_CACHE_KEY);
-    }
+    sessionStorage.removeItem("studybuddy:isSuperuser");
   } catch {
-    // Ignore storage failures (private mode, quota, etc.)
+    // Ignore storage failures.
   }
-}
-
-export function subscribeToSuperuserCache(onStoreChange: () => void): () => void {
-  if (typeof window === "undefined") return () => undefined;
-  const handler = () => onStoreChange();
-  window.addEventListener("storage", handler);
-  return () => window.removeEventListener("storage", handler);
 }
