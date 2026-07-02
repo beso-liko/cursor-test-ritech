@@ -2,12 +2,17 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/pinecone";
 import { getPineconeIndex } from "@/lib/pinecone";
 
+let embeddingsInstance: OpenAIEmbeddings | null = null;
+
 function makeEmbeddings() {
-  return new OpenAIEmbeddings({
-    model: "text-embedding-3-small",
-    openAIApiKey: process.env.OPENAI_API_KEY,
-    dimensions: 1024,
-  });
+  if (!embeddingsInstance) {
+    embeddingsInstance = new OpenAIEmbeddings({
+      model: "text-embedding-3-small",
+      openAIApiKey: process.env.OPENAI_API_KEY,
+      dimensions: 1024,
+    });
+  }
+  return embeddingsInstance;
 }
 
 export async function retrieveContext(
@@ -148,6 +153,26 @@ export async function retrieveContextWithScores(
   });
 
   return vectorStore.similaritySearchWithScore(query, topK);
+}
+
+/** Single-query scored retrieval for focus validation — no chat broad-query fallback. */
+export async function retrieveFocusScores(
+  query: string,
+  opts: { documentId?: string; documentIds?: string[]; userId?: string },
+  topK = 3
+): Promise<ScoredDoc[]> {
+  if (opts.documentIds && opts.documentIds.length > 0) {
+    return retrieveContextForDocumentsWithScores(
+      query,
+      opts.documentIds,
+      topK,
+      opts.userId
+    );
+  }
+  if (opts.documentId) {
+    return retrieveContextWithScores(query, opts.documentId, topK, opts.userId);
+  }
+  return [];
 }
 
 export async function retrieveContextForDocuments(

@@ -5,7 +5,15 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { getOwnedDocument, getOwnedGroup } from "@/lib/supabase/user-queries";
-import { getSampleContext, getSampleContextForDocuments } from "@/lib/langchain/rag-chain";
+import {
+  getSampleContext,
+  getSampleContextForDocuments,
+} from "@/lib/langchain/rag-chain";
+import { validateFocusRelevance } from "@/lib/langchain/validate-relevance";
+import {
+  clearDocumentGeneratedContent,
+  clearGroupGeneratedContent,
+} from "@/lib/supabase/document-lifecycle";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const maxDuration = 60;
@@ -68,6 +76,25 @@ function langInstruction(locale: string): string {
     : "";
 }
 
+function normalizeFocus(focus?: string | null): string | null {
+  const trimmed = focus?.trim();
+  return trimmed || null;
+}
+
+function parseStoredGenerationFocus(content: string | null | undefined): string | null {
+  if (!content) return null;
+  try {
+    const parsed = JSON.parse(content) as { generationFocus?: string | null };
+    return normalizeFocus(parsed.generationFocus);
+  } catch {
+    return null;
+  }
+}
+
+function focusMatches(stored: string | null, requested: string | null): boolean {
+  return stored === requested;
+}
+
 /** Resolve a list of documentIds from either a documentId or groupId. */
 async function resolveDocumentIds(
   supabase: SupabaseClient,
@@ -86,6 +113,24 @@ async function resolveDocumentIds(
   return [];
 }
 
+async function getStoredGenerationFocus(
+  supabase: SupabaseClient,
+  isGroup: boolean,
+  documentId?: string,
+  groupId?: string
+): Promise<string | null> {
+  const query = isGroup
+    ? supabase.from("summaries").select("content").eq("group_id", groupId).single()
+    : supabase.from("summaries").select("content").eq("document_id", documentId).single();
+
+  const { data } = await query;
+  return parseStoredGenerationFocus(data?.content);
+}
+
+function focusInstruction(focus: string): string {
+  return `\n\nFocus specifically on: ${focus}. All output should center on this area while staying faithful to the source material.`;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ type: string }> }
@@ -97,7 +142,8 @@ export async function POST(
     if (auth instanceof NextResponse) return auth;
     const { user } = auth;
 
-    const { documentId, groupId, locale = "en" } = await req.json();
+    const { documentId, groupId, locale = "en", focus, regenerate } = await req.json();
+    const requestFocus = normalizeFocus(focus);
 
     if (!documentId && !groupId) {
       return NextResponse.json(
@@ -128,55 +174,65 @@ export async function POST(
     }
 
     const isGroup = Boolean(groupId);
+    const storedFocus = await getStoredGenerationFocus(
+      supabase,
+      isGroup,
+      documentId,
+      groupId
+    );
 
-    // --- Cache check ---
-    if (type === "summary") {
-      const query = isGroup
-        ? supabase.from("summaries").select("*").eq("group_id", groupId).single()
-        : supabase.from("summaries").select("*").eq("document_id", documentId).single();
+    if (regenerate || !focusMatches(storedFocus, requestFocus)) {
+      if (isGroup && groupId) {
+        await clearGroupGeneratedContent(supabase, groupId);
+      } else if (documentId) {
+        await clearDocumentGeneratedContent(supabase, documentId);
+      }
+    } else {
+      // --- Cache check ---
+      if (type === "summary") {
+        const query = isGroup
+          ? supabase.from("summaries").select("*").eq("group_id", groupId).single()
+          : supabase.from("summaries").select("*").eq("document_id", documentId).single();
 
-      const { data: existing } = await query;
-      if (existing) {
-        try {
-          const parsed = JSON.parse(existing.content);
-          if ((parsed.locale ?? "en") === locale) return NextResponse.json(existing);
-        } catch {
+        const { data: existing } = await query;
+        if (existing) {
+          try {
+            const parsed = JSON.parse(existing.content);
+            const existingFocus = normalizeFocus(parsed.generationFocus);
+            if (
+              (parsed.locale ?? "en") === locale &&
+              focusMatches(existingFocus, requestFocus)
+            ) {
+              return NextResponse.json(existing);
+            }
+          } catch {
+            if (locale === "en" && requestFocus === null) {
+              return NextResponse.json(existing);
+            }
+          }
+        }
+      }
+
+      if (type === "flashcards") {
+        const query = isGroup
+          ? supabase.from("flashcards").select("*").eq("group_id", groupId)
+          : supabase.from("flashcards").select("*").eq("document_id", documentId);
+
+        const { data: existing } = await query;
+        if (existing && existing.length > 0 && focusMatches(storedFocus, requestFocus)) {
           if (locale === "en") return NextResponse.json(existing);
         }
-        const deleteQuery = isGroup
-          ? supabase.from("summaries").delete().eq("group_id", groupId)
-          : supabase.from("summaries").delete().eq("document_id", documentId);
-        await deleteQuery;
       }
-    }
 
-    if (type === "flashcards") {
-      const query = isGroup
-        ? supabase.from("flashcards").select("*").eq("group_id", groupId)
-        : supabase.from("flashcards").select("*").eq("document_id", documentId);
+      if (type === "quiz") {
+        const query = isGroup
+          ? supabase.from("quizzes").select("*").eq("group_id", groupId).single()
+          : supabase.from("quizzes").select("*").eq("document_id", documentId).single();
 
-      const { data: existing } = await query;
-      if (existing && existing.length > 0) {
-        if (locale === "en") return NextResponse.json(existing);
-        const deleteQuery = isGroup
-          ? supabase.from("flashcards").delete().eq("group_id", groupId)
-          : supabase.from("flashcards").delete().eq("document_id", documentId);
-        await deleteQuery;
-      }
-    }
-
-    if (type === "quiz") {
-      const query = isGroup
-        ? supabase.from("quizzes").select("*").eq("group_id", groupId).single()
-        : supabase.from("quizzes").select("*").eq("document_id", documentId).single();
-
-      const { data: existing } = await query;
-      if (existing) {
-        if (locale === "en") return NextResponse.json(existing);
-        const deleteQuery = isGroup
-          ? supabase.from("quizzes").delete().eq("group_id", groupId)
-          : supabase.from("quizzes").delete().eq("document_id", documentId);
-        await deleteQuery;
+        const { data: existing } = await query;
+        if (existing && focusMatches(storedFocus, requestFocus)) {
+          if (locale === "en") return NextResponse.json(existing);
+        }
       }
     }
 
@@ -190,7 +246,32 @@ export async function POST(
           { status: 422 }
         );
       }
-      context = await getSampleContextForDocuments(docIds, undefined, user.supabaseUserId);
+
+      if (requestFocus) {
+        const relevance = await validateFocusRelevance(requestFocus, {
+          documentIds: docIds,
+          userId: user.supabaseUserId,
+        });
+        if (!relevance.valid) {
+          return NextResponse.json({ error: relevance.error }, { status: 422 });
+        }
+        context = relevance.context;
+      } else {
+        context = await getSampleContextForDocuments(
+          docIds,
+          undefined,
+          user.supabaseUserId
+        );
+      }
+    } else if (requestFocus) {
+      const relevance = await validateFocusRelevance(requestFocus, {
+        documentId,
+        userId: user.supabaseUserId,
+      });
+      if (!relevance.valid) {
+        return NextResponse.json({ error: relevance.error }, { status: 422 });
+      }
+      context = relevance.context;
     } else {
       context = await getSampleContext(documentId, undefined, user.supabaseUserId);
     }
@@ -203,6 +284,7 @@ export async function POST(
     }
 
     const lang = langInstruction(locale);
+    const focusLine = requestFocus ? focusInstruction(requestFocus) : "";
     const sourceLabel = isGroup
       ? "these study materials"
       : "this document";
@@ -216,13 +298,27 @@ export async function POST(
 Document content:
 ${context}
 
-Generate a detailed summary with key points and main topics covered.${lang}`,
+Generate a detailed summary with key points and main topics covered.${focusLine}${lang}`,
       });
       const object = result.object as SummaryOutput;
 
       const row = isGroup
-        ? { group_id: groupId, content: JSON.stringify({ locale, ...object }) }
-        : { document_id: documentId, content: JSON.stringify({ locale, ...object }) };
+        ? {
+            group_id: groupId,
+            content: JSON.stringify({
+              locale,
+              generationFocus: requestFocus,
+              ...object,
+            }),
+          }
+        : {
+            document_id: documentId,
+            content: JSON.stringify({
+              locale,
+              generationFocus: requestFocus,
+              ...object,
+            }),
+          };
 
       const { data, error } = await supabase
         .from("summaries")
@@ -249,7 +345,7 @@ Each flashcard must include a "difficulty" field set to "easy", "medium", or "ha
 Document content:
 ${context}
 
-Generate clear, concise question-answer pairs.${lang}`,
+Generate clear, concise question-answer pairs.${focusLine}${lang}`,
       });
       const object = result.object as FlashcardsOutput;
 
@@ -287,7 +383,7 @@ All 18 questions must be distinct — no repeated concepts.
 Document content:
 ${context}
 
-Generate challenging but fair questions that test understanding of key concepts.${lang}`,
+Generate challenging but fair questions that test understanding of key concepts.${focusLine}${lang}`,
       });
       const object = result.object as QuizOutput;
       const questions = object.questions.map(shuffleQuizAnswers);

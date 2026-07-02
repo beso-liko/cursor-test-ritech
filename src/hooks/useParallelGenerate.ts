@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useBackgroundGenerate } from "@/hooks/useBackgroundGenerate";
 import type { Summary, Flashcard, Quiz } from "@/lib/supabase/types";
 
@@ -8,7 +8,7 @@ export interface GenerateSlot<T> {
   data: T | null;
   isLoading: boolean;
   timedOut: boolean;
-  startGenerate: () => void;
+  startGenerate: (overrideBody?: Record<string, unknown>) => void;
 }
 
 interface UseParallelGenerateOptions {
@@ -18,12 +18,23 @@ interface UseParallelGenerateOptions {
   initialSummary: Summary | null;
   initialFlashcards: Flashcard[];
   initialQuiz: Quiz | null;
+  autoStart?: boolean;
+  initialFocus?: string | null;
+  onOffTopic?: () => void;
+}
+
+interface RegenerateAllOptions {
+  focus?: string | null;
+  regenerate?: boolean;
 }
 
 interface UseParallelGenerateReturn {
   summary: GenerateSlot<Summary>;
   flashcards: GenerateSlot<Flashcard[]>;
   quiz: GenerateSlot<Quiz>;
+  focus: string | null;
+  clearGeneratedContent: () => void;
+  regenerateAll: (opts?: RegenerateAllOptions) => void;
 }
 
 function contentPollUrl(
@@ -37,6 +48,21 @@ function contentPollUrl(
   return `/api/content?${params.toString()}`;
 }
 
+function buildRequestBody(
+  groupId: string | undefined,
+  documentId: string | undefined,
+  locale: string,
+  focus: string | null,
+  extra?: Record<string, unknown>
+) {
+  return {
+    ...(groupId ? { groupId } : { documentId }),
+    locale,
+    ...(focus ? { focus } : {}),
+    ...extra,
+  };
+}
+
 export function useParallelGenerate({
   documentId,
   groupId,
@@ -44,10 +70,15 @@ export function useParallelGenerate({
   initialSummary,
   initialFlashcards,
   initialQuiz,
+  autoStart = true,
+  initialFocus = null,
+  onOffTopic,
 }: UseParallelGenerateOptions): UseParallelGenerateReturn {
+  const [focus, setFocus] = useState<string | null>(initialFocus);
+
   const body = useMemo(
-    () => (groupId ? { groupId, locale } : { documentId, locale }),
-    [groupId, documentId, locale]
+    () => buildRequestBody(groupId, documentId, locale, focus),
+    [groupId, documentId, locale, focus]
   );
 
   const [summaryData, setSummaryData] = useState<Summary | null>(initialSummary);
@@ -68,10 +99,12 @@ export function useParallelGenerate({
     startGenerate: startSummary,
   } = useBackgroundGenerate<Summary>({
     hasInitialData: Boolean(initialSummary),
+    autoStart,
     apiPath: "/api/generate/summary",
     body,
     pollFn: summaryPollFn,
     onResult: setSummaryData,
+    onOffTopic,
   });
 
   const [flashcardsData, setFlashcardsData] = useState<Flashcard[]>(initialFlashcards);
@@ -92,10 +125,12 @@ export function useParallelGenerate({
     startGenerate: startFlashcards,
   } = useBackgroundGenerate<Flashcard[]>({
     hasInitialData: Boolean(initialFlashcards && initialFlashcards.length > 0),
+    autoStart,
     apiPath: "/api/generate/flashcards",
     body,
     pollFn: flashcardsPollFn,
     onResult: setFlashcardsData,
+    onOffTopic,
   });
 
   const [quizData, setQuizData] = useState<Quiz | null>(initialQuiz);
@@ -116,11 +151,48 @@ export function useParallelGenerate({
     startGenerate: startQuiz,
   } = useBackgroundGenerate<Quiz>({
     hasInitialData: Boolean(initialQuiz),
+    autoStart,
     apiPath: "/api/generate/quiz",
     body,
     pollFn: quizPollFn,
     onResult: setQuizData,
+    onOffTopic,
   });
+
+  const clearGeneratedContent = useCallback(() => {
+    setSummaryData(null);
+    setFlashcardsData([]);
+    setQuizData(null);
+  }, []);
+
+  const regenerateAll = useCallback(
+    (opts?: RegenerateAllOptions) => {
+      const nextFocus = opts?.focus !== undefined ? opts.focus : focus;
+      if (opts?.focus !== undefined) {
+        setFocus(nextFocus);
+      }
+
+      clearGeneratedContent();
+
+      const override = buildRequestBody(groupId, documentId, locale, nextFocus, {
+        ...(opts?.regenerate ? { regenerate: true } : {}),
+      });
+
+      startSummary(override);
+      startFlashcards(override);
+      startQuiz(override);
+    },
+    [
+      focus,
+      clearGeneratedContent,
+      groupId,
+      documentId,
+      locale,
+      startSummary,
+      startFlashcards,
+      startQuiz,
+    ]
+  );
 
   return {
     summary: {
@@ -141,5 +213,8 @@ export function useParallelGenerate({
       timedOut: quizTimedOut,
       startGenerate: startQuiz,
     },
+    focus,
+    clearGeneratedContent,
+    regenerateAll,
   };
 }

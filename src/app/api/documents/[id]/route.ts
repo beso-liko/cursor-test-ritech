@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { createAdminClient } from "@/lib/supabase/server";
-import { deleteDocumentVectors } from "@/lib/langchain/embedder";
+import {
+  clearGroupGeneratedContent,
+  deleteDocumentRecord,
+  deleteEmptyGroupIfNeeded,
+} from "@/lib/supabase/document-lifecycle";
 import { getOwnedDocument } from "@/lib/supabase/user-queries";
 
 export async function GET(
@@ -44,6 +48,7 @@ export async function PATCH(
 
     const body = await req.json();
     const update: Record<string, string | null> = {};
+    const previousGroupId = doc.group_id;
 
     if ("groupId" in body) {
       update.group_id = body.groupId ?? null;
@@ -66,7 +71,31 @@ export async function PATCH(
       .single();
 
     if (error) throw error;
-    return NextResponse.json(data);
+
+    let invalidatedGroupId: string | undefined;
+    if (previousGroupId && previousGroupId !== data.group_id) {
+      await clearGroupGeneratedContent(admin, previousGroupId);
+      invalidatedGroupId = previousGroupId;
+    }
+    if (data.group_id && data.group_id !== previousGroupId) {
+      await clearGroupGeneratedContent(admin, data.group_id);
+      invalidatedGroupId = data.group_id;
+    }
+
+    let groupDeleted = false;
+    if (previousGroupId && !data.group_id) {
+      groupDeleted = await deleteEmptyGroupIfNeeded(
+        admin,
+        previousGroupId,
+        auth.user.supabaseUserId
+      );
+    }
+
+    return NextResponse.json({
+      ...data,
+      invalidatedGroupId,
+      groupDeleted,
+    });
   } catch (err) {
     console.error("Document PATCH error:", err);
     return NextResponse.json({ error: "Failed to update document" }, { status: 500 });
@@ -88,21 +117,30 @@ export async function DELETE(
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    await deleteDocumentVectors(id).catch(console.error);
+    const groupId = doc.group_id;
 
-    if (doc.file_url) {
-      const path = doc.file_url.split("/").slice(-1)[0];
-      await admin.storage.from("documents").remove([path]);
+    await deleteDocumentRecord(admin, doc);
+
+    let invalidatedGroupId: string | undefined;
+    if (groupId) {
+      await clearGroupGeneratedContent(admin, groupId);
+      invalidatedGroupId = groupId;
     }
 
-    const { error } = await admin
-      .from("documents")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", auth.user.supabaseUserId);
+    let groupDeleted = false;
+    if (groupId) {
+      groupDeleted = await deleteEmptyGroupIfNeeded(
+        admin,
+        groupId,
+        auth.user.supabaseUserId
+      );
+    }
 
-    if (error) throw error;
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      invalidatedGroupId,
+      groupDeleted,
+    });
   } catch (err) {
     console.error("Document DELETE error:", err);
     return NextResponse.json(

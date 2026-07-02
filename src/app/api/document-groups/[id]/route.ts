@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { createAdminClient } from "@/lib/supabase/server";
+import { deleteAllDocumentsInGroup } from "@/lib/supabase/document-lifecycle";
 import { getOwnedGroup } from "@/lib/supabase/user-queries";
 
 export async function GET(
@@ -84,11 +85,7 @@ export async function DELETE(
 
     const admin = createAdminClient();
 
-    await admin
-      .from("documents")
-      .update({ group_id: null })
-      .eq("group_id", id)
-      .eq("user_id", auth.user.supabaseUserId);
+    await deleteAllDocumentsInGroup(admin, id, auth.user.supabaseUserId);
 
     const { error } = await admin
       .from("document_groups")

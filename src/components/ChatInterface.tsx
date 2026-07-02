@@ -13,11 +13,18 @@ import SelectableContent from "@/components/notes/SelectableContent";
 interface ChatInterfaceProps {
   documentId?: string;
   groupId?: string;
+  /** Active generation focus, if the user chose topic-focused materials. */
+  generationFocus?: string | null;
   /** Pre-fetched messages from the server — restores the previous conversation. */
   initialMessages?: Message[];
 }
 
-export default function ChatInterface({ documentId, groupId, initialMessages }: ChatInterfaceProps) {
+export default function ChatInterface({
+  documentId,
+  groupId,
+  generationFocus,
+  initialMessages,
+}: ChatInterfaceProps) {
   const { t, locale } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLoadingRef = useRef(false);
@@ -27,7 +34,11 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
   const isLoadingRef = useRef(false);
   const prevCountRef = useRef((initialMessages ?? []).length);
 
-  const chatBody = groupId ? { groupId, locale } : { documentId, locale };
+  const chatBody = {
+    ...(groupId ? { groupId } : { documentId }),
+    locale,
+    ...(generationFocus ? { generationFocus } : {}),
+  };
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } =
     useChat({
@@ -49,8 +60,7 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
             {
               id: crypto.randomUUID(),
               role: "assistant",
-              content:
-                "I can only answer questions about the uploaded material. This question appears to be outside that scope.",
+              content: t("chat.offTopic"),
               createdAt: new Date(),
             },
           ]);
@@ -159,6 +169,11 @@ export default function ChatInterface({ documentId, groupId, initialMessages }: 
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">
                 {t("chat.desc")}
               </p>
+              {generationFocus && (
+                <p className="text-xs text-muted-foreground mt-2 max-w-sm rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                  {t("chat.focusNote", { focus: generationFocus })}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2 justify-center mt-2">
               {suggestions.map((suggestion) => (

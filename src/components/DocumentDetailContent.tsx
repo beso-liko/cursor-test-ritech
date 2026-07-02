@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   FileText,
@@ -21,11 +22,14 @@ import SummaryPanel from "@/components/SummaryPanel";
 import FlashcardViewer from "@/components/FlashcardViewer";
 import QuizInterface from "@/components/QuizInterface";
 import ChatInterface from "@/components/ChatInterface";
+import GenerationFocusControls from "@/components/GenerationFocusControls";
 import type { Document, Summary, Flashcard, Quiz } from "@/lib/supabase/types";
 import type { Message } from "ai";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useParallelGenerate } from "@/hooks/useParallelGenerate";
+import { useGenerationFocus } from "@/hooks/useGenerationFocus";
+import { parseStoredGenerationFocus } from "@/lib/generation/focus";
 
 const fileIcons = {
   pdf: { icon: FileText, color: "text-red-500 dark:text-red-400 bg-red-500/10" },
@@ -53,6 +57,11 @@ export default function DocumentDetailContent({
   initialMessages,
 }: DocumentDetailContentProps) {
   const { t, locale } = useLanguage();
+  const [docStatus, setDocStatus] = useState(doc.status);
+  const [contentVersion, setContentVersion] = useState(0);
+
+  const storedFocus = parseStoredGenerationFocus(summary);
+  const offTopicHandlerRef = useRef<() => void>(() => {});
 
   const generate = useParallelGenerate({
     documentId: doc.id,
@@ -60,7 +69,37 @@ export default function DocumentDetailContent({
     initialSummary: summary,
     initialFlashcards: flashcards,
     initialQuiz: quiz,
+    autoStart: false,
+    initialFocus: storedFocus,
+    onOffTopic: () => offTopicHandlerRef.current(),
   });
+
+  const focusControls = useGenerationFocus({
+    isReady: docStatus === "ready",
+    initialSummary: summary,
+    initialFlashcards: flashcards,
+    initialQuiz: quiz,
+    generate,
+    onFocusApplied: () => setContentVersion((version) => version + 1),
+    registerOffTopicHandler: (handler) => {
+      offTopicHandlerRef.current = handler;
+    },
+  });
+
+  useEffect(() => {
+    if (docStatus !== "processing") return;
+
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/documents/${doc.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.status && data.status !== docStatus) {
+        setDocStatus(data.status);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [doc.id, docStatus]);
 
   const statusConfig = {
     ready: {
@@ -83,11 +122,11 @@ export default function DocumentDetailContent({
   const fileConfig =
     fileIcons[doc.file_type as keyof typeof fileIcons] ?? fileIcons.txt;
   const status =
-    statusConfig[doc.status as keyof typeof statusConfig] ??
+    statusConfig[docStatus as keyof typeof statusConfig] ??
     statusConfig.error;
   const FileIcon = fileConfig.icon;
   const StatusIcon = status.icon;
-  const isReady = doc.status === "ready";
+  const isReady = docStatus === "ready";
 
   const dateLocale = locale === "sq" ? "sq-AL" : "en-US";
   const formattedDate = new Date(doc.created_at).toLocaleDateString(
@@ -95,9 +134,12 @@ export default function DocumentDetailContent({
     { month: "long", day: "numeric", year: "numeric" }
   );
 
+  const regenerateOverride = generate.focus
+    ? { focus: generate.focus, regenerate: true }
+    : { regenerate: true };
+
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-4xl">
-      {/* Back button */}
       <Button
         variant="ghost"
         size="sm"
@@ -109,7 +151,6 @@ export default function DocumentDetailContent({
         {t("document.back")}
       </Button>
 
-      {/* Document header */}
       <Card className="shadow-none border-border/60 mb-6">
         <CardContent className="p-5">
           <div className="flex items-start gap-4">
@@ -146,8 +187,7 @@ export default function DocumentDetailContent({
         </CardContent>
       </Card>
 
-      {/* Processing state */}
-      {doc.status === "processing" && (
+      {docStatus === "processing" && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-4 mb-6 flex items-center gap-3">
           <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-sm text-amber-800 dark:text-amber-300">
@@ -156,7 +196,7 @@ export default function DocumentDetailContent({
         </div>
       )}
 
-      {doc.status === "error" && (
+      {docStatus === "error" && (
         <div className="rounded-xl bg-red-500/10 border border-red-500/25 p-4 mb-6 flex items-center gap-3">
           <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
           <p className="text-sm text-red-800 dark:text-red-300">
@@ -165,79 +205,94 @@ export default function DocumentDetailContent({
         </div>
       )}
 
-      {/* Tabs */}
       {isReady && (
-        <Tabs defaultValue="summary">
-          <TabsList className="mb-6 h-10">
-            <TabsTrigger value="summary" className="text-sm">
-              {t("document.tab.summary")}
-            </TabsTrigger>
-            <TabsTrigger value="flashcards" className="text-sm">
-              {t("document.tab.flashcards")}
-              {(generate.flashcards.data?.length ?? 0) > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1.5 text-xs h-4 px-1.5"
-                >
-                  {generate.flashcards.data!.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="quiz" className="text-sm">
-              {t("document.tab.quiz")}
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="text-sm">
-              {t("document.tab.chat")}
-            </TabsTrigger>
-          </TabsList>
+        <>
+          <GenerationFocusControls
+            documentId={doc.id}
+            controls={focusControls}
+          />
 
-          <TabsContent value="summary">
-            <Card className="shadow-none border-border/60">
-              <CardContent className="p-4 md:p-6">
-                <SummaryPanel
-                  summary={generate.summary.data}
-                  isLoading={generate.summary.isLoading}
-                  timedOut={generate.summary.timedOut}
-                  onRegenerate={generate.summary.startGenerate}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Tabs defaultValue="summary">
+            <TabsList className="mb-6 h-10">
+              <TabsTrigger value="summary" className="text-sm">
+                {t("document.tab.summary")}
+              </TabsTrigger>
+              <TabsTrigger value="flashcards" className="text-sm">
+                {t("document.tab.flashcards")}
+                {(generate.flashcards.data?.length ?? 0) > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1.5 text-xs h-4 px-1.5"
+                  >
+                    {generate.flashcards.data!.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="quiz" className="text-sm">
+                {t("document.tab.quiz")}
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="text-sm">
+                {t("document.tab.chat")}
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="flashcards">
-            <Card className="shadow-none border-border/60">
-              <CardContent className="p-4 md:p-6">
-                <FlashcardViewer
-                  cards={generate.flashcards.data ?? []}
-                  isLoading={generate.flashcards.isLoading}
-                  timedOut={generate.flashcards.timedOut}
-                  onRegenerate={generate.flashcards.startGenerate}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <TabsContent value="summary">
+              <Card className="shadow-none border-border/60">
+                <CardContent className="p-4 md:p-6">
+                  <SummaryPanel
+                    summary={generate.summary.data}
+                    isLoading={generate.summary.isLoading}
+                    timedOut={generate.summary.timedOut}
+                    onRegenerate={() => generate.summary.startGenerate(regenerateOverride)}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="quiz">
-            <Card className="shadow-none border-border/60">
-              <CardContent className="p-4 md:p-6">
-                <QuizInterface
-                  quiz={generate.quiz.data}
-                  isLoading={generate.quiz.isLoading}
-                  timedOut={generate.quiz.timedOut}
-                  onRegenerate={generate.quiz.startGenerate}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <TabsContent value="flashcards">
+              <Card className="shadow-none border-border/60">
+                <CardContent className="p-4 md:p-6">
+                  <FlashcardViewer
+                    cards={generate.flashcards.data ?? []}
+                    isLoading={generate.flashcards.isLoading}
+                    timedOut={generate.flashcards.timedOut}
+                    onRegenerate={() =>
+                      generate.flashcards.startGenerate(regenerateOverride)
+                    }
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="chat" keepMounted>
-            <Card className="shadow-none border-border/60">
-              <CardContent className="p-4 md:p-6">
-                <ChatInterface documentId={doc.id} initialMessages={initialMessages} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="quiz">
+              <Card className="shadow-none border-border/60">
+                <CardContent className="p-4 md:p-6">
+                  <QuizInterface
+                    quiz={generate.quiz.data}
+                    isLoading={generate.quiz.isLoading}
+                    timedOut={generate.quiz.timedOut}
+                    onRegenerate={() => generate.quiz.startGenerate(regenerateOverride)}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="chat" keepMounted>
+              <Card className="shadow-none border-border/60">
+                <CardContent className="p-4 md:p-6">
+                  <ChatInterface
+                    key={contentVersion}
+                    documentId={doc.id}
+                    generationFocus={focusControls.activeFocus}
+                    initialMessages={
+                      contentVersion === 0 ? initialMessages : undefined
+                    }
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </>
       )}
     </div>
   );

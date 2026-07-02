@@ -190,6 +190,13 @@ const en = {
   "group.title": "Study Set ({n} files)",
   "group.files": "Files in this set",
   "group.viewDoc": "View",
+  "group.fileActions": "File actions",
+  "group.removeFromFolder": "Remove from folder",
+  "group.removeFromFolder.confirm":
+    "Remove this file from the folder? The file will be kept as an unfiled document.",
+  "group.deleteFile": "Delete file",
+  "group.deleteFile.confirm":
+    "Delete this file permanently? Study materials for this folder will be regenerated without it.",
 
   // SummaryPanel
   "summary.generating": "Generating summary with AI…",
@@ -241,11 +248,32 @@ const en = {
   "chat.title": "Chat with your document",
   "chat.desc":
     "Ask any question about the content. The AI will answer based on your document.",
+  "chat.focusNote":
+    "Study materials are focused on: {focus}. You can still ask about any part of the document.",
   "chat.suggestion.1": "Summarize the main idea",
   "chat.suggestion.2": "What are the key concepts?",
   "chat.suggestion.3": "Explain the most important topic",
   "chat.placeholder": "Ask anything about this document…",
   "chat.hint": "Press Enter to send · Shift+Enter for new line",
+  "chat.offTopic":
+    "I can only generate study material related to your uploaded document. This topic appears to be outside that scope.",
+
+  // Generation focus dialog
+  "generateFocus.title": "How should we generate your study materials?",
+  "generateFocus.option.general": "Generate material on the entire document",
+  "generateFocus.option.generalGroup": "Generate material on the entire study set",
+  "generateFocus.option.focused": "Generate material focusing specifically on…",
+  "generateFocus.focus.placeholder":
+    "e.g. Chapter 3, photosynthesis, key definitions in section 2…",
+  "generateFocus.submit": "Generate",
+  "generateFocus.validating": "Checking topic…",
+  "generateFocus.offTopic":
+    "This topic doesn't seem related to your uploaded material. Try something mentioned in the document.",
+  "generateFocus.changeButton": "Change generation focus",
+  "generateFocus.current.general": "Whole document",
+  "generateFocus.current.generalGroup": "Entire study set",
+  "generateFocus.current.focused": "Focused on: {focus}",
+  "generateFocus.choosePrompt": "Choose what to generate before we create your study materials.",
 
   // Folder feature
   "folder.new": "New Folder",
@@ -267,7 +295,8 @@ const en = {
   "folder.dialog.name.placeholder": "e.g. Biology, Exam Prep…",
   "folder.dialog.cancel": "Cancel",
   "folder.delete.title": "Delete \"{name}\"?",
-  "folder.delete.desc": "The folder will be removed. Documents inside will not be deleted — they will appear as unfiled.",
+  "folder.delete.desc":
+    "The folder and all files inside it will be permanently deleted. This cannot be undone.",
   "folder.delete.cancel": "Cancel",
   "folder.delete.confirm": "Delete folder",
   "folder.deleting": "Deleting…",
@@ -533,6 +562,13 @@ const sq: typeof en = {
   "group.title": "Set Studimi ({n} skedarë)",
   "group.files": "Skedarët në këtë set",
   "group.viewDoc": "Shiko",
+  "group.fileActions": "Veprimet e skedarit",
+  "group.removeFromFolder": "Hiq nga dosja",
+  "group.removeFromFolder.confirm":
+    "Hiq këtë skedar nga dosja? Skedari do të ruhet si dokument pa dosje.",
+  "group.deleteFile": "Fshi skedarin",
+  "group.deleteFile.confirm":
+    "Fshi këtë skedar përgjithmonë? Materialet e studimit për këtë dosje do të rigjenerohen pa të.",
 
   // SummaryPanel
   "summary.generating": "Duke gjeneruar përmbledhjen me AI…",
@@ -585,11 +621,33 @@ const sq: typeof en = {
   "chat.title": "Bisedoni me dokumentin tuaj",
   "chat.desc":
     "Bëni çdo pyetje rreth përmbajtjes. AI do të përgjigjet bazuar në dokumentin tuaj.",
+  "chat.focusNote":
+    "Materialet e studimit janë të fokusuara në: {focus}. Mund të pyesni ende për çdo pjesë të dokumentit.",
   "chat.suggestion.1": "Përmbledhni idenë kryesore",
   "chat.suggestion.2": "Cilat janë konceptet kryesore?",
   "chat.suggestion.3": "Shpjegoni temën më të rëndësishme",
   "chat.placeholder": "Pyesni çdo gjë rreth këtij dokumenti…",
   "chat.hint": "Shtypni Enter për të dërguar · Shift+Enter për rresht të ri",
+  "chat.offTopic":
+    "Mund të gjeneroj vetëm materiale studimi që lidhen me dokumentin tuaj të ngarkuar. Kjo temë duket se është jashtë fushës së tij.",
+
+  // Generation focus dialog
+  "generateFocus.title": "Si duhet të gjenerojmë materialet tuaja të studimit?",
+  "generateFocus.option.general": "Gjenero material mbi të gjithë dokumentin",
+  "generateFocus.option.generalGroup": "Gjenero material mbi të gjithë setin e studimit",
+  "generateFocus.option.focused": "Gjenero material duke u fokusuar specifikisht në…",
+  "generateFocus.focus.placeholder":
+    "p.sh. Kapitulli 3, fotosinteza, definicionet kryesore në seksionin 2…",
+  "generateFocus.submit": "Gjenero",
+  "generateFocus.validating": "Duke kontrolluar temën…",
+  "generateFocus.offTopic":
+    "Kjo temë nuk duket e lidhur me materialin tuaj të ngarkuar. Provoni diçka që përmendet në dokument.",
+  "generateFocus.changeButton": "Ndrysho fokusin e gjenerimit",
+  "generateFocus.current.general": "I gjithë dokumenti",
+  "generateFocus.current.generalGroup": "I gjithë seti i studimit",
+  "generateFocus.current.focused": "I fokusuar në: {focus}",
+  "generateFocus.choosePrompt":
+    "Zgjidhni çfarë të gjenerohet para se të krijojmë materialet tuaja të studimit.",
 
   // Folder feature
   "folder.new": "Dosje e Re",
@@ -611,7 +669,8 @@ const sq: typeof en = {
   "folder.dialog.name.placeholder": "p.sh. Biologji, Përgatitje për Provim…",
   "folder.dialog.cancel": "Anulo",
   "folder.delete.title": "Fshi \"{name}\"?",
-  "folder.delete.desc": "Dosja do të hiqet. Dokumentet brenda saj nuk do të fshihen — ato do të shfaqen si të paklasifikuara.",
+  "folder.delete.desc":
+    "Dosja dhe të gjithë skedarët brenda saj do të fshihen përgjithmonë. Ky veprim nuk mund të zhbëhet.",
   "folder.delete.cancel": "Anulo",
   "folder.delete.confirm": "Fshi dosjen",
   "folder.deleting": "Duke fshirë…",

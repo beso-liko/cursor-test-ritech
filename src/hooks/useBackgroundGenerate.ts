@@ -5,8 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface UseBackgroundGenerateOptions<T> {
   /** Pass true when the parent already has data from SSR; skips auto-start. */
   hasInitialData: boolean;
+  /** When false, generation waits for an explicit startGenerate() call. Default true. */
+  autoStart?: boolean;
   /** POST endpoint, e.g. "/api/generate/summary" */
   apiPath: string;
+  /** Called when the API rejects a focus topic as off-document. */
+  onOffTopic?: () => void;
   /** Request body — object is serialised to JSON on each call */
   body: Record<string, unknown>;
   /**
@@ -32,7 +36,7 @@ interface UseBackgroundGenerateReturn {
    * Falls back to Supabase polling only if the request fails or returns an error.
    * Safe to call multiple times — cancels any in-flight operation first.
    */
-  startGenerate: () => void;
+  startGenerate: (overrideBody?: Record<string, unknown>) => void;
 }
 
 const POLL_INTERVAL_MS = 3_000;
@@ -40,10 +44,12 @@ const MAX_ATTEMPTS = 20; // 60 s fallback total
 
 export function useBackgroundGenerate<T>({
   hasInitialData,
+  autoStart = true,
   apiPath,
   body,
   pollFn,
   onResult,
+  onOffTopic,
 }: UseBackgroundGenerateOptions<T>): UseBackgroundGenerateReturn {
   const [isPolling, setIsPolling] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
@@ -54,11 +60,13 @@ export function useBackgroundGenerate<T>({
 
   const pollFnRef = useRef(pollFn);
   const onResultRef = useRef(onResult);
+  const onOffTopicRef = useRef(onOffTopic);
   const bodyRef = useRef(body);
   const apiPathRef = useRef(apiPath);
 
   pollFnRef.current = pollFn;
   onResultRef.current = onResult;
+  onOffTopicRef.current = onOffTopic;
   bodyRef.current = body;
   apiPathRef.current = apiPath;
 
@@ -105,7 +113,7 @@ export function useBackgroundGenerate<T>({
     }, POLL_INTERVAL_MS);
   }, [stopAll]);
 
-  const startGenerate = useCallback(() => {
+  const startGenerate = useCallback((overrideBody?: Record<string, unknown>) => {
     stopAll();
     setTimedOut(false);
     setIsPolling(true);
@@ -113,15 +121,25 @@ export function useBackgroundGenerate<T>({
     const controller = new AbortController();
     abortRef.current = controller;
 
+    const requestBody = { ...bodyRef.current, ...overrideBody };
+
     // Await the POST response directly — the route returns the full result,
     // so we get the data as soon as generation completes without any poll delay.
     fetch(apiPathRef.current, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyRef.current),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     })
       .then(async (res) => {
+        if (res.status === 422) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          stopAll();
+          if (data.error === "off_topic") {
+            onOffTopicRef.current?.();
+          }
+          return;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: T = await res.json();
         const hasResult =
@@ -143,7 +161,7 @@ export function useBackgroundGenerate<T>({
 
   // Auto-start on mount when there is no pre-fetched data
   useEffect(() => {
-    if (!hasInitialData) {
+    if (autoStart && !hasInitialData) {
       startGenerate();
     }
     return () => {

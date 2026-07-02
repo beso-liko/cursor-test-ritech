@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import {
   ArrowLeft,
   FileText,
@@ -13,7 +15,12 @@ import {
   AlertCircle,
   Hash,
   Files,
+  MoreHorizontal,
+  Trash2,
+  FolderMinus,
+  Loader2,
 } from "lucide-react";
+import { Menu } from "@base-ui/react/menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +29,7 @@ import SummaryPanel from "@/components/SummaryPanel";
 import FlashcardViewer from "@/components/FlashcardViewer";
 import QuizInterface from "@/components/QuizInterface";
 import ChatInterface from "@/components/ChatInterface";
+import GenerationFocusControls from "@/components/GenerationFocusControls";
 import type {
   Document,
   DocumentGroup,
@@ -33,6 +41,8 @@ import type { Message } from "ai";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useParallelGenerate } from "@/hooks/useParallelGenerate";
+import { useGenerationFocus } from "@/hooks/useGenerationFocus";
+import { parseStoredGenerationFocus } from "@/lib/generation/focus";
 
 const fileIcons = {
   pdf: { icon: FileText, color: "text-red-500 dark:text-red-400 bg-red-500/10" },
@@ -55,13 +65,20 @@ interface GroupDetailContentProps {
 
 export default function GroupDetailContent({
   group,
-  documents,
+  documents: initialDocuments,
   summary,
   flashcards,
   quiz,
   initialMessages,
 }: GroupDetailContentProps) {
+  const router = useRouter();
   const { t, locale } = useLanguage();
+  const [documents, setDocuments] = useState(initialDocuments);
+  const [actionDocId, setActionDocId] = useState<string | null>(null);
+  const [contentVersion, setContentVersion] = useState(0);
+
+  const storedFocus = parseStoredGenerationFocus(summary);
+  const offTopicHandlerRef = useRef<() => void>(() => {});
 
   const generate = useParallelGenerate({
     groupId: group.id,
@@ -69,7 +86,90 @@ export default function GroupDetailContent({
     initialSummary: summary,
     initialFlashcards: flashcards,
     initialQuiz: quiz,
+    autoStart: false,
+    initialFocus: storedFocus,
+    onOffTopic: () => offTopicHandlerRef.current(),
   });
+
+  const focusControls = useGenerationFocus({
+    isReady: documents.some((doc) => doc.status === "ready"),
+    isGroup: true,
+    initialSummary: summary,
+    initialFlashcards: flashcards,
+    initialQuiz: quiz,
+    generate,
+    onFocusApplied: () => setContentVersion((version) => version + 1),
+    registerOffTopicHandler: (handler) => {
+      offTopicHandlerRef.current = handler;
+    },
+  });
+
+  const maybeRegenerateMaterials = (nextDocuments: Document[]) => {
+    const hasReady = nextDocuments.some((doc) => doc.status === "ready");
+    generate.clearGeneratedContent();
+    setContentVersion((version) => version + 1);
+    if (hasReady) {
+      generate.regenerateAll({
+        focus: generate.focus,
+        regenerate: true,
+      });
+    }
+  };
+
+  const handleRemoveFromFolder = async (docId: string) => {
+    if (!confirm(t("group.removeFromFolder.confirm"))) return;
+
+    setActionDocId(docId);
+    try {
+      const res = await fetch(`/api/documents/${docId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId: null }),
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data.groupDeleted) {
+        router.push("/documents");
+        router.refresh();
+        return;
+      }
+
+      const nextDocuments = documents.filter((doc) => doc.id !== docId);
+      setDocuments(nextDocuments);
+      if (data.invalidatedGroupId) {
+        maybeRegenerateMaterials(nextDocuments);
+      }
+    } finally {
+      setActionDocId(null);
+    }
+  };
+
+  const handleDeleteFile = async (docId: string) => {
+    if (!confirm(t("group.deleteFile.confirm"))) return;
+
+    setActionDocId(docId);
+    try {
+      const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data.groupDeleted) {
+        router.push("/documents");
+        router.refresh();
+        return;
+      }
+
+      const nextDocuments = documents.filter((doc) => doc.id !== docId);
+      setDocuments(nextDocuments);
+      if (data.invalidatedGroupId) {
+        maybeRegenerateMaterials(nextDocuments);
+      }
+    } finally {
+      setActionDocId(null);
+    }
+  };
 
   const statusConfig = {
     ready: {
@@ -100,6 +200,10 @@ export default function GroupDetailContent({
     day: "numeric",
     year: "numeric",
   });
+
+  const regenerateOverride = generate.focus
+    ? { focus: generate.focus, regenerate: true }
+    : { regenerate: true };
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-4xl">
@@ -171,11 +275,12 @@ export default function GroupDetailContent({
           const FileIcon = fileConfig.icon;
           const status = statusConfig[doc.status as keyof typeof statusConfig] ?? statusConfig.error;
           const StatusIcon = status.icon;
+          const isActionPending = actionDocId === doc.id;
 
           return (
             <div
               key={doc.id}
-              className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-card"
+              className="group flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-card"
             >
               <div className={cn("p-2 rounded-lg shrink-0", fileConfig.color)}>
                 <FileIcon className="w-4 h-4" />
@@ -198,15 +303,70 @@ export default function GroupDetailContent({
                   )}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                nativeButton={false}
-                render={<Link href={`/documents/${doc.id}`} />}
-                className="text-xs text-muted-foreground shrink-0"
-              >
-                {t("group.viewDoc")}
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  nativeButton={false}
+                  render={<Link href={`/documents/${doc.id}`} />}
+                  className="text-xs text-muted-foreground hidden sm:inline-flex"
+                >
+                  {t("group.viewDoc")}
+                </Button>
+
+                <Menu.Root>
+                  <Menu.Trigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        disabled={isActionPending}
+                        aria-label={t("group.fileActions")}
+                      />
+                    }
+                  >
+                    {isActionPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    )}
+                  </Menu.Trigger>
+                  <Menu.Portal>
+                    <Menu.Positioner sideOffset={4} align="end">
+                      <Menu.Popup
+                        className={cn(
+                          "z-50 min-w-[200px] origin-[var(--transform-origin)] rounded-xl border border-border bg-popover p-1 shadow-md outline-none",
+                          "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
+                          "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
+                        )}
+                      >
+                        <Menu.Item
+                          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-foreground cursor-pointer select-none outline-none data-highlighted:bg-accent sm:hidden"
+                          onClick={() => router.push(`/documents/${doc.id}`)}
+                        >
+                          {t("group.viewDoc")}
+                        </Menu.Item>
+                        <Menu.Item
+                          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-foreground cursor-pointer select-none outline-none data-highlighted:bg-accent"
+                          onClick={() => handleRemoveFromFolder(doc.id)}
+                        >
+                          <FolderMinus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          {t("group.removeFromFolder")}
+                        </Menu.Item>
+                        <div className="my-1 h-px bg-border mx-1" />
+                        <Menu.Item
+                          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-destructive cursor-pointer select-none outline-none data-highlighted:bg-destructive/10"
+                          onClick={() => handleDeleteFile(doc.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                          {t("group.deleteFile")}
+                        </Menu.Item>
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.Root>
+              </div>
             </div>
           );
         })}
@@ -222,7 +382,10 @@ export default function GroupDetailContent({
 
       {/* AI Tabs — only if at least one document is ready */}
       {readyCount > 0 && (
-        <Tabs defaultValue="summary">
+        <>
+          <GenerationFocusControls groupId={group.id} controls={focusControls} />
+
+          <Tabs defaultValue="summary">
           <TabsList className="mb-6 h-10">
             <TabsTrigger value="summary" className="text-sm">
               {t("document.tab.summary")}
@@ -250,7 +413,7 @@ export default function GroupDetailContent({
                   summary={generate.summary.data}
                   isLoading={generate.summary.isLoading}
                   timedOut={generate.summary.timedOut}
-                  onRegenerate={generate.summary.startGenerate}
+                  onRegenerate={() => generate.summary.startGenerate(regenerateOverride)}
                 />
               </CardContent>
             </Card>
@@ -263,7 +426,9 @@ export default function GroupDetailContent({
                   cards={generate.flashcards.data ?? []}
                   isLoading={generate.flashcards.isLoading}
                   timedOut={generate.flashcards.timedOut}
-                  onRegenerate={generate.flashcards.startGenerate}
+                  onRegenerate={() =>
+                    generate.flashcards.startGenerate(regenerateOverride)
+                  }
                 />
               </CardContent>
             </Card>
@@ -276,7 +441,7 @@ export default function GroupDetailContent({
                   quiz={generate.quiz.data}
                   isLoading={generate.quiz.isLoading}
                   timedOut={generate.quiz.timedOut}
-                  onRegenerate={generate.quiz.startGenerate}
+                  onRegenerate={() => generate.quiz.startGenerate(regenerateOverride)}
                 />
               </CardContent>
             </Card>
@@ -285,11 +450,17 @@ export default function GroupDetailContent({
           <TabsContent value="chat" keepMounted>
             <Card className="shadow-none border-border/60">
               <CardContent className="p-4 md:p-6">
-                <ChatInterface groupId={group.id} initialMessages={initialMessages} />
+                <ChatInterface
+                  key={contentVersion}
+                  groupId={group.id}
+                  generationFocus={focusControls.activeFocus}
+                  initialMessages={contentVersion === 0 ? initialMessages : undefined}
+                />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+        </>
       )}
     </div>
   );

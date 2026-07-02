@@ -106,10 +106,7 @@ export default function DocumentsPage() {
   const handleDeleteFolder = async (id: string) => {
     await fetch(`/api/document-groups/${id}`, { method: "DELETE" });
     setFolders((prev) => prev.filter((f) => f.id !== id));
-    // Documents that were in this folder become unfiled
-    setDocuments((prev) =>
-      prev.map((d) => (d.group_id === id ? { ...d, group_id: null } : d))
-    );
+    setDocuments((prev) => prev.filter((d) => d.group_id !== id));
   };
 
   const isEmpty = documents.length === 0 && folders.length === 0;
