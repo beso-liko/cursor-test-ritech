@@ -130,11 +130,6 @@ export default function GroupDetailContent({
       if (!res.ok) return;
 
       const data = await res.json();
-      if (data.groupDeleted) {
-        router.push("/documents");
-        router.refresh();
-        return;
-      }
 
       const nextDocuments = documents.filter((doc) => doc.id !== docId);
       setDocuments(nextDocuments);
@@ -155,11 +150,6 @@ export default function GroupDetailContent({
       if (!res.ok) return;
 
       const data = await res.json();
-      if (data.groupDeleted) {
-        router.push("/documents");
-        router.refresh();
-        return;
-      }
 
       const nextDocuments = documents.filter((doc) => doc.id !== docId);
       setDocuments(nextDocuments);
@@ -235,21 +225,27 @@ export default function GroupDetailContent({
                   variant="outline"
                   className={cn(
                     "text-xs border",
-                    allReady
+                    totalCount === 0
+                      ? "bg-muted/50 text-muted-foreground border-border/60"
+                      : allReady
                       ? statusConfig.ready.class
                       : anyProcessing
                       ? statusConfig.processing.class
                       : statusConfig.error.class
                   )}
                 >
-                  {allReady ? (
+                  {totalCount === 0 ? (
+                    <Files className="w-3 h-3 mr-1" />
+                  ) : allReady ? (
                     <CheckCircle className="w-3 h-3 mr-1" />
                   ) : anyProcessing ? (
                     <Clock className="w-3 h-3 mr-1" />
                   ) : (
                     <AlertCircle className="w-3 h-3 mr-1" />
                   )}
-                  {allReady
+                  {totalCount === 0
+                    ? t("folder.docs.other", { n: 0 })
+                    : allReady
                     ? t("document.status.ready")
                     : anyProcessing
                     ? t("document.status.processing")
@@ -269,7 +265,12 @@ export default function GroupDetailContent({
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
           {t("group.files")}
         </p>
-        {documents.map((doc) => {
+        {documents.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+            {t("group.empty")}
+          </p>
+        ) : (
+          documents.map((doc) => {
           const fileConfig =
             fileIcons[doc.file_type as keyof typeof fileIcons] ?? fileIcons.txt;
           const FileIcon = fileConfig.icon;
@@ -369,7 +370,8 @@ export default function GroupDetailContent({
               </div>
             </div>
           );
-        })}
+        })
+        )}
       </div>
 
       {/* Processing state */}

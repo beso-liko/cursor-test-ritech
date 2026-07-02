@@ -157,7 +157,10 @@ test.describe.serial("documents page", () => {
     await expect(page.locator(".group").filter({ hasText: searchableFile })).toBeVisible();
     await expect(
       page.getByRole("link", { name: renamedFolderName, exact: true })
-    ).not.toBeVisible();
+    ).toBeVisible();
+    await expect(
+      page.locator(".group").filter({ has: page.getByRole("heading", { name: renamedFolderName, exact: true }) }).getByText("0 documents")
+    ).toBeVisible();
   });
 
   test("deletes a document from the list", async ({ page }) => {

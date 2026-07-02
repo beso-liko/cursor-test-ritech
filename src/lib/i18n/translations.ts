@@ -189,6 +189,7 @@ const en = {
   // Group detail page
   "group.title": "Study Set ({n} files)",
   "group.files": "Files in this set",
+  "group.empty": "No files in this folder yet. Move or upload documents to get started.",
   "group.viewDoc": "View",
   "group.fileActions": "File actions",
   "group.removeFromFolder": "Remove from folder",
@@ -561,6 +562,7 @@ const sq: typeof en = {
   // Group detail page
   "group.title": "Set Studimi ({n} skedarë)",
   "group.files": "Skedarët në këtë set",
+  "group.empty": "Nuk ka skedarë në këtë dosje ende. Lëviz ose ngarko dokumente për të filluar.",
   "group.viewDoc": "Shiko",
   "group.fileActions": "Veprimet e skedarit",
   "group.removeFromFolder": "Hiq nga dosja",

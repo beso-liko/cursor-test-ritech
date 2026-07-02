@@ -44,30 +44,6 @@ export async function deleteDocumentRecord(
   if (error) throw error;
 }
 
-export async function deleteEmptyGroupIfNeeded(
-  admin: AdminClient,
-  groupId: string,
-  userId: string
-): Promise<boolean> {
-  const { count, error } = await admin
-    .from("documents")
-    .select("*", { count: "exact", head: true })
-    .eq("group_id", groupId)
-    .eq("user_id", userId);
-
-  if (error) throw error;
-  if ((count ?? 0) > 0) return false;
-
-  const { error: deleteError } = await admin
-    .from("document_groups")
-    .delete()
-    .eq("id", groupId)
-    .eq("user_id", userId);
-
-  if (deleteError) throw deleteError;
-  return true;
-}
-
 export async function deleteAllDocumentsInGroup(
   admin: AdminClient,
   groupId: string,

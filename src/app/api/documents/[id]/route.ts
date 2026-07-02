@@ -4,7 +4,6 @@ import { createAdminClient } from "@/lib/supabase/server";
 import {
   clearGroupGeneratedContent,
   deleteDocumentRecord,
-  deleteEmptyGroupIfNeeded,
 } from "@/lib/supabase/document-lifecycle";
 import { getOwnedDocument } from "@/lib/supabase/user-queries";
 
@@ -82,19 +81,9 @@ export async function PATCH(
       invalidatedGroupId = data.group_id;
     }
 
-    let groupDeleted = false;
-    if (previousGroupId && !data.group_id) {
-      groupDeleted = await deleteEmptyGroupIfNeeded(
-        admin,
-        previousGroupId,
-        auth.user.supabaseUserId
-      );
-    }
-
     return NextResponse.json({
       ...data,
       invalidatedGroupId,
-      groupDeleted,
     });
   } catch (err) {
     console.error("Document PATCH error:", err);
@@ -127,19 +116,9 @@ export async function DELETE(
       invalidatedGroupId = groupId;
     }
 
-    let groupDeleted = false;
-    if (groupId) {
-      groupDeleted = await deleteEmptyGroupIfNeeded(
-        admin,
-        groupId,
-        auth.user.supabaseUserId
-      );
-    }
-
     return NextResponse.json({
       success: true,
       invalidatedGroupId,
-      groupDeleted,
     });
   } catch (err) {
     console.error("Document DELETE error:", err);
