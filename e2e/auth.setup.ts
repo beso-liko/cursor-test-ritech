@@ -48,9 +48,19 @@ setup("ensure test user", async () => {
 
 setup("authenticate", async ({ page }) => {
   const email = process.env.E2E_CLERK_USER_EMAIL!;
+  const password = process.env.E2E_CLERK_USER_PASSWORD!;
 
-  await page.goto("/");
-  await clerk.signIn({ page, emailAddress: email });
+  // Clerk requires a public page that loads Clerk before signIn().
+  await page.goto("/sign-in");
+  await clerk.signIn({
+    page,
+    signInParams: {
+      strategy: "password",
+      identifier: email,
+      password,
+    },
+  });
+
   await page.goto("/");
   await page.getByRole("heading", { name: "Dashboard" }).waitFor();
 

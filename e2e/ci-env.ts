@@ -30,6 +30,8 @@ export function getWebServerEnv(port: string | number): Record<string, string> {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey,
     CLERK_PUBLISHABLE_KEY:
       process.env.CLERK_PUBLISHABLE_KEY ?? publishableKey,
+    NEXT_PUBLIC_CLERK_SIGN_IN_URL: "/sign-in",
+    NEXT_PUBLIC_CLERK_SIGN_UP_URL: "/sign-up",
     E2E_CLERK_USER_EMAIL: process.env.E2E_CLERK_USER_EMAIL ?? "",
     E2E_CLERK_USER_PASSWORD: process.env.E2E_CLERK_USER_PASSWORD ?? "",
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",

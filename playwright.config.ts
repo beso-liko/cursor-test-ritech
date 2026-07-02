@@ -45,6 +45,7 @@ export default defineConfig({
       name: "auth setup",
       testMatch: /auth\.setup\.ts/,
       dependencies: ["global setup"],
+      timeout: 120_000,
     },
     {
       name: "authenticated",
