@@ -1,6 +1,6 @@
 import { clerk } from "@clerk/testing/playwright";
 import { createClerkClient } from "@clerk/backend";
-import { test as setup } from "@playwright/test";
+import { expect, test as setup } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { loadTestEnv } from "./load-env";
@@ -48,21 +48,24 @@ setup("ensure test user", async () => {
 
 setup("authenticate", async ({ page }) => {
   const email = process.env.E2E_CLERK_USER_EMAIL!;
-  const password = process.env.E2E_CLERK_USER_PASSWORD!;
 
   // Clerk requires a public page that loads Clerk before signIn().
   await page.goto("/sign-in");
-  await clerk.signIn({
-    page,
-    signInParams: {
-      strategy: "password",
-      identifier: email,
-      password,
-    },
-  });
+  await page.waitForSelector(".cl-rootBox", { state: "attached", timeout: 30_000 });
+
+  // Ticket-based sign-in via Backend API is more reliable than password in CI.
+  await clerk.signIn({ page, emailAddress: email });
+
+  await page.waitForFunction(
+    () => Boolean(window.Clerk?.user && window.Clerk?.session),
+    { timeout: 30_000 }
+  );
 
   await page.goto("/");
-  await page.getByRole("heading", { name: "Dashboard" }).waitFor();
+  await expect(page).not.toHaveURL(/sign-in/, { timeout: 30_000 });
+  await expect(
+    page.getByRole("main").getByRole("heading", { name: /Dashboard|Paneli/ })
+  ).toBeVisible({ timeout: 60_000 });
 
   fs.mkdirSync(authDir, { recursive: true });
   await page.context().storageState({ path: authFile });

@@ -7,6 +7,7 @@ loadTestEnv();
 
 const PORT = process.env.PORT || 3000;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PORT}`;
+const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: path.join(__dirname, "e2e"),
@@ -24,10 +25,10 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "npm run dev",
+    command: isCI ? "npm run build && npm run start" : "npm run dev",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    reuseExistingServer: !isCI,
+    timeout: isCI ? 300_000 : 120_000,
     env: getWebServerEnv(PORT),
   },
   projects: [
