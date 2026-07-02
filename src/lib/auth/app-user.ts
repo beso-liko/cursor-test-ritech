@@ -3,7 +3,7 @@ import { linkClerkToSupabase, type AppUser } from "@/lib/auth/link-clerk-user";
 
 export type { AppUser };
 
-function getClerkEmails(
+export function getClerkEmails(
   clerkUser: NonNullable<Awaited<ReturnType<typeof currentUser>>>
 ): string[] {
   const emails = clerkUser.emailAddresses

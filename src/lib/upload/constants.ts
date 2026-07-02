@@ -1,0 +1,3 @@
+export const DEFAULT_MONTHLY_UPLOAD_LIMIT = 15;
+
+export const RESERVATION_TTL_MINUTES = 30;

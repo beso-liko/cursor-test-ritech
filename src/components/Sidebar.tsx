@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -16,6 +17,7 @@ import {
   Moon,
   X,
   Mail,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -32,6 +34,25 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const { t, locale, setLocale } = useLanguage();
   const { theme, setTheme } = useTheme();
   const { user } = useUser();
+  const [isSuperuser, setIsSuperuser] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setIsSuperuser(Boolean(data?.isSuperuser));
+      })
+      .catch(() => {
+        if (!cancelled) setIsSuperuser(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.primaryEmailAddress?.emailAddress]);
 
   const displayName =
     user?.fullName ||
@@ -63,6 +84,16 @@ export default function Sidebar({ onClose }: SidebarProps) {
       icon: Settings,
       description: t("sidebar.nav.account.desc"),
     },
+    ...(isSuperuser
+      ? [
+          {
+            href: "/admin",
+            label: t("sidebar.nav.admin"),
+            icon: Shield,
+            description: t("sidebar.nav.admin.desc"),
+          },
+        ]
+      : []),
     {
       href: marketingContactUrl(),
       label: t("sidebar.nav.contact"),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { createAdminClient } from "@/lib/supabase/server";
+import { consumeUploadReservation } from "@/lib/upload/reserve";
 
 export async function GET() {
   try {
@@ -33,12 +34,30 @@ export async function POST(req: NextRequest) {
     const { user } = auth;
 
     const body = await req.json();
-    const { name, fileType, groupId } = body;
+    const { name, fileType, groupId, reservationId } = body;
 
     if (!name || !fileType) {
       return NextResponse.json(
         { error: "name and fileType are required" },
         { status: 400 }
+      );
+    }
+
+    if (!reservationId || typeof reservationId !== "string") {
+      return NextResponse.json(
+        { error: "A valid upload reservation is required" },
+        { status: 403 }
+      );
+    }
+
+    const consumed = await consumeUploadReservation(
+      reservationId,
+      user.supabaseUserId
+    );
+    if (!consumed) {
+      return NextResponse.json(
+        { error: "Upload reservation is invalid or expired" },
+        { status: 403 }
       );
     }
 

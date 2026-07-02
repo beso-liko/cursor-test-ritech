@@ -1,0 +1,94 @@
+SEKSIONI,Celesi,Vlera,Njesia,Shenime
+Supozime,cmimet_per_daten,2026-06-30,date,Rifresko çdo tremujor nga faqet e çmimeve
+Supozime,monedha,USD,,
+Supozime,madhesia_chunk_karaktere,1000,karaktere,src/lib/langchain/splitter.ts
+Supozime,mbivendosje_chunk_karaktere,200,karaktere,src/lib/langchain/splitter.ts
+Supozime,max_ngarkim_mb,20,MB,src/components/FileUploader.tsx
+Supozime,modeli_embedding,text-embedding-3-small,,
+Supozime,dimensionet_embedding,1024,,
+Supozime,modeli_llm,gpt-4o-mini,,
+Supozime,chat_top_k,8,chunks,src/lib/langchain/rag-chain.ts
+Supozime,chunks_konteksti_gjenerimit,8,chunks,getSampleContext default topK
+Supozime,dok_lehte_per_mau_muaj,2,dok,
+Supozime,fjale_lehte_per_dok,2500,fjale,~5 faqe
+Supozime,mesazhe_chat_lehte_per_mau_muaj,10,mesazhe,
+Supozime,ocr_imazh_lehte_per_mau_muaj,0,imazhe,
+Supozime,dok_mesatar_per_mau_muaj,5,dok,
+Supozime,fjale_mesatar_per_dok,5000,fjale,~10 faqe mesatar
+Supozime,mesazhe_chat_mesatar_per_mau_muaj,40,mesazhe,
+Supozime,ocr_imazh_mesatar_per_mau_muaj,2,imazhe,
+Supozime,madhesi_skedari_lehte_mb,3,MB,vlerësim PDF/DOCX
+Supozime,madhesi_skedari_mesatar_mb,8,MB,mix formatesh
+Supozime,perdorues_te_regjistruar_te_vegjel,10,perdorues,
+Supozime,pct_mau_te_vegjel,0.70,raport,70% të regjistruar aktivë
+Supozime,perdorues_te_regjistruar_mesatar,100,perdorues,
+Supozime,pct_mau_mesatar,0.50,raport,
+Supozime,perdorues_te_regjistruar_te_medhenj,1000,perdorues,
+Supozime,pct_mau_te_medhenj,0.40,raport,
+Supozime,domeni_vjetor_usd,25,USD/vit,vlerësim TLD .al
+Supozime,projekte_vercel,2,numër,app + marketing
+KostoUnitare,openai_gpt4o_mini_input_per_1m_token,0.15,USD,https://developers.openai.com/api/docs/pricing
+KostoUnitare,openai_gpt4o_mini_output_per_1m_token,0.60,USD,
+KostoUnitare,openai_embedding_small_per_1m_token,0.02,USD,
+KostoUnitare,karaktere_per_fjale,5,karaktere,mesatare anglisht
+KostoUnitare,token_per_chunk_embed,250,token,~1000 karaktere
+KostoUnitare,chunks_lehte_per_dok,16,chunks,12500 kar / 800 hap efektiv
+KostoUnitare,chunks_mesatar_per_dok,31,chunks,25000 kar / 800
+KostoUnitare,token_input_gjenerimi_per_thirrje,2500,token,8 chunks + prompt
+KostoUnitare,token_output_gjenerimi_per_thirrje,1200,token,mesatar përmbledhje/flashcards/kuiz
+KostoUnitare,token_input_chat_per_mesazh,2600,token,kontekst RAG + histori
+KostoUnitare,token_output_chat_per_mesazh,350,token,
+KostoUnitare,kerkesa_embed_chat_per_mesazh,1.5,kerkesa,pyetje të gjera përdorin 2
+KostoUnitare,token_input_vision_per_imazh,1500,token,vlerësim
+KostoUnitare,token_output_vision_per_imazh,500,token,
+KostoUnitare,kosto_embed_dok_lehte_usd,0.00008,USD,16 chunks * 250 tok * $0.02/1M
+KostoUnitare,kosto_embed_dok_mesatar_usd,0.00016,USD,31 chunks
+KostoUnitare,kosto_trio_gjenerimi_dok_usd,0.00329,USD,3 thirrje generateObject
+KostoUnitare,kosto_pipeline_i_plote_lehte_usd,0.00337,USD,embed + 3 gjenerime (cache pas)
+KostoUnitare,kosto_pipeline_i_plote_mesatar_usd,0.00345,USD,embed më i madh
+KostoUnitare,kosto_mesazh_chat_usd,0.00060,USD,
+KostoUnitare,kosto_ocr_imazh_usd,0.00053,USD,gpt-4o-mini vision
+KostoUnitare,kosto_openai_mau_lehte_usd,0.0127,USD,formula: 2*0.00337 + 10*0.0006
+KostoUnitare,kosto_openai_mau_mesatar_usd,0.0511,USD,formula: 5*0.00345 + 40*0.0006 + 2*0.00053
+KostoUnitare,pinecone_starter_ruajtje_gb,2,GB,plan falas
+KostoUnitare,pinecone_starter_lexime_muaj,1000000,lexime,
+KostoUnitare,pinecone_starter_shkrime_muaj,2000000,shkrime,
+KostoUnitare,pinecone_lexime_per_chat,2,lexime,kerkesë + marrje e gjerë opsionale
+KostoUnitare,pinecone_lexime_per_gjenerim,1,lexime,
+KostoUnitare,pinecone_shkrime_per_chunk,1,shkrime,upsert në procesim
+KostoUnitare,supabase_falas_db_mb,500,MB,
+KostoUnitare,supabase_falas_ruajtje_gb,1,GB,
+KostoUnitare,supabase_falas_egress_gb,10,GB,5 pa cache + 5 me cache
+KostoUnitare,supabase_pro_mujor_usd,25,USD,për projekt
+KostoUnitare,supabase_pro_teprice_ruajtje_per_gb,0.0213,USD,
+KostoUnitare,clerk_hobby_kufi_mru,50000,MRU,Monthly Retained Users
+KostoUnitare,clerk_pro_mujor_usd,25,USD,
+KostoUnitare,vercel_hobby_bandwidth_gb,100,GB/muaj,
+KostoUnitare,vercel_pro_mujor_usd,20,USD,përfshin $20 kredit përdorimi
+Skenar,etiketa,perdorues_te_regjistruar,mau,pct_mau,profili,openai_usd,pinecone_usd,supabase_usd,clerk_usd,vercel_usd,domeni_usd,totali_usd,kosto_dominuese,kufi_i_pare
+Skenar,I-vogel-baze-lehte,10,7,0.70,lehte,0.09,0.00,0.00,0.00,0.00,2.08,2.17,Domeni (amortizuar),Asnjë në këtë shkallë
+Skenar,I-vogel-me-i-keq-lehte,10,10,1.00,lehte,0.13,0.00,0.00,0.00,0.00,2.08,2.21,Domeni,Asnjë
+Skenar,Mesatar-baze-lehte,100,50,0.50,lehte,0.64,0.00,0.00,0.00,0.00,2.08,2.72,Domeni,Asnjë
+Skenar,Mesatar-me-i-keq-lehte,100,100,1.00,lehte,1.27,0.00,0.00,0.00,0.00,2.08,3.35,OpenAI,Asnjë
+Skenar,Mesatar-baze-mesatar,100,50,0.50,mesatar,2.56,0.00,0.00,0.00,0.00,2.08,4.64,OpenAI,Asnjë
+Skenar,Mesatar-me-i-keq-mesatar,100,100,1.00,mesatar,5.11,0.00,0.00,0.00,0.00,2.08,7.19,OpenAI,Ruajtje Supabase në ngarkime të vazhdueshme
+Skenar,I-madh-baze-mesatar,1000,400,0.40,mesatar,20.44,0.00,25.00,0.00,0.00,2.08,47.52,OpenAI + Supabase Pro,Ruajtje Supabase ~3.2GB kumulative
+Skenar,I-madh-me-i-keq-mesatar,1000,1000,1.00,mesatar,51.10,0.00,25.00,0.00,20.00,2.08,98.18,OpenAI,Ruajtje Supabase ~8GB; compute Vercel
+Skenar,I-madh-baze-lehte,1000,400,0.40,lehte,5.08,0.00,0.00,0.00,0.00,2.08,7.16,OpenAI,Asnjë deri sa rritet ruajtja
+KufijtPlani,shërbimi,kufiri_falas,perdorim_mesatar_me_i_keq,perdorim_i_madh_baze,statusi_mesatar,statusi_i_madh,veprim_i_rekomanduar
+KufijtPlani,OpenAI API,Pay-as-you-go,$5.11/muaj,$20.44/muaj,Jeshile,Jeshile,Vendos alarme faturimi në $25/$50/$100
+KufijtPlani,Pinecone Starter,2GB / 1M lexime,~3100 vektorë,~124000 vektorë,Jeshile,Jeshile,Qendro në Starter; monitoro leximet
+KufijtPlani,Ruajtje Supabase,1 GB,~0.8 GB kumulative,~3.2 GB kumulative,E verdhë,E kuqe,Upgrade Pro ($25) te ~I madh bazë mesatar
+KufijtPlani,DB Supabase,500 MB,~50 MB,~200 MB,Jeshile,Jeshile,Monitoro rritjen e rreshtave nga chat/shënime
+KufijtPlani,Egress Supabase,10 GB/muaj,~5 GB/muaj,~20 GB/muaj,Jeshile,E verdhë,Procesimi shkarkon 2x (ngarkim + API)
+KufijtPlani,Clerk Hobby,50000 MRU,100 MRU,400 MRU,Jeshile,Jeshile,Asnjë veprim
+KufijtPlani,Vercel Hobby x2,100 GB + 1M thirrje,OK,Kufi,E verdhë,E verdhë,Upgrade projektin app në Pro nëse ndalet
+KufijtPlani,Domeni,.al rinovim,~$25/vit,~$25/vit,Jeshile,Jeshile,Kosto fikse vjetore
+Ndjeshmeria,variabla,vlera_baze,minus_50pct,plus_50pct,shenime
+Ndjeshmeria,mesazhe_chat_mesatar,40,20.44,30.67,Shkallëzohet linearisht me OpenAI
+Ndjeshmeria,dok_per_mau_mesatar,5,20.44,30.67,Embed + gjenerim shkallëzohen linearisht
+Ndjeshmeria,mau_i_madh_baze,400,10.22,30.67,Vetëm OpenAI; infra fikse deri sa kufijt
+PikeBarabarte,cmim_abonimi_placeholder,9.99,USD/muaj,Nivel me pagesë i ardhshëm
+PikeBarabarte,kosto_infra_i_madh_baze_mesatar,47.52,USD/muaj,Nga skenari I-madh-baze-mesatar
+PikeBarabarte,perdorues_me_pagese_te_nevojshem,5,perdorues,ceil(47.52/9.99) pa tarifat e pagesës
+PikeBarabarte,pct_procesim_pagese,0.05,raport,Lemon Squeezy / Stripe ~3-5% + tarifë fikse

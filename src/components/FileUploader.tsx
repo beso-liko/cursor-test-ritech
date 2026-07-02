@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Upload,
@@ -49,9 +49,28 @@ interface FileEntry {
   documentId: string | null;
 }
 
+interface UploadUsage {
+  used: number;
+  limit: number | null;
+  unlimited: boolean;
+  remaining: number | null;
+  resetsOn: string;
+}
+
 function resolveFileType(file: File): string | null {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   return ACCEPTED_TYPES[file.type] ?? EXTENSION_MAP[ext] ?? null;
+}
+
+function getBrowserTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+async function fetchUploadUsage(): Promise<UploadUsage | null> {
+  const timezone = getBrowserTimezone();
+  const res = await fetch(`/api/upload/usage?timezone=${encodeURIComponent(timezone)}`);
+  if (!res.ok) return null;
+  return res.json();
 }
 
 export default function FileUploader() {
@@ -61,6 +80,16 @@ export default function FileUploader() {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [globalStatus, setGlobalStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UploadUsage | null>(null);
+
+  const refreshUsage = useCallback(async () => {
+    const next = await fetchUploadUsage();
+    if (next) setUsage(next);
+  }, []);
+
+  useEffect(() => {
+    void refreshUsage();
+  }, [refreshUsage]);
 
   const updateEntry = useCallback(
     (id: string, patch: Partial<FileEntry>) =>
@@ -121,6 +150,7 @@ export default function FileUploader() {
     setEntries([]);
     setGlobalStatus("idle");
     setGlobalError(null);
+    void refreshUsage();
   };
 
   const handleUpload = async () => {
@@ -136,7 +166,25 @@ export default function FileUploader() {
       return;
     }
 
-    // Create a group if uploading more than one file
+    const timezone = getBrowserTimezone();
+    const reserveRes = await fetch("/api/upload/reserve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count: entries.length, timezone }),
+    });
+
+    if (!reserveRes.ok) {
+      const err = await reserveRes.json().catch(() => ({}));
+      setGlobalError(err.error ?? "Upload limit reached.");
+      setGlobalStatus("error");
+      if (err.usage) setUsage({ ...err.usage, resetsOn: usage?.resetsOn ?? "" });
+      else void refreshUsage();
+      return;
+    }
+
+    const { reservationId } = await reserveRes.json();
+    void refreshUsage();
+
     let groupId: string | null = null;
     if (entries.length > 1) {
       const groupName = entries.map((e) => e.file.name).join(", ");
@@ -155,9 +203,8 @@ export default function FileUploader() {
       groupId = groupData.id;
     }
 
-    // Upload + process each file (in parallel)
     const results = await Promise.allSettled(
-      entries.map((entry) => uploadOne(entry, groupId, updateEntry))
+      entries.map((entry) => uploadOne(entry, groupId, reservationId, updateEntry))
     );
 
     const allDocumentIds = results
@@ -168,10 +215,12 @@ export default function FileUploader() {
 
     if (anyError && allDocumentIds.length === 0) {
       setGlobalStatus("error");
+      void refreshUsage();
       return;
     }
 
     setGlobalStatus("done");
+    void refreshUsage();
 
     setTimeout(() => {
       if (groupId) {
@@ -184,12 +233,33 @@ export default function FileUploader() {
 
   const isRunning = globalStatus === "running";
   const isDone = globalStatus === "done";
-  const idleEntries = entries.filter((e) => e.status === "idle");
   const allIdle = entries.length > 0 && entries.every((e) => e.status === "idle");
+  const atLimit =
+    usage != null &&
+    !usage.unlimited &&
+    usage.remaining != null &&
+    usage.remaining <= 0;
 
   return (
     <div className="space-y-4 max-w-xl">
-      {/* Drop zone — always visible so more files can be added */}
+      {usage && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3">
+          <p className="text-sm font-medium text-foreground">
+            {usage.unlimited
+              ? t("uploader.usage.unlimited", { used: usage.used })
+              : t("uploader.usage.limited", {
+                  used: usage.used,
+                  limit: usage.limit ?? 0,
+                })}
+          </p>
+          {!usage.unlimited && usage.resetsOn && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("uploader.usage.resets", { date: usage.resetsOn })}
+            </p>
+          )}
+        </div>
+      )}
+
       {!isRunning && !isDone && (
         <label
           htmlFor="file-input"
@@ -232,7 +302,6 @@ export default function FileUploader() {
         </label>
       )}
 
-      {/* File list */}
       {entries.length > 0 && (
         <div className="space-y-2">
           {entries.map((entry) => (
@@ -245,16 +314,14 @@ export default function FileUploader() {
         </div>
       )}
 
-      {/* Global error */}
       {globalError && (
         <p className="text-xs text-destructive flex items-center gap-1.5">
           <AlertCircle className="w-3.5 h-3.5" /> {globalError}
         </p>
       )}
 
-      {/* Action buttons */}
       {allIdle && (
-        <Button className="w-full" onClick={handleUpload}>
+        <Button className="w-full" onClick={handleUpload} disabled={atLimit}>
           <Upload className="w-4 h-4 mr-2" />
           {entries.length === 1
             ? t("uploader.button.upload")
@@ -270,8 +337,6 @@ export default function FileUploader() {
     </div>
   );
 }
-
-// ─── Per-file row ────────────────────────────────────────────────────────────
 
 function FileRow({
   entry,
@@ -336,11 +401,10 @@ function FileRow({
   );
 }
 
-// ─── Upload logic for a single file ─────────────────────────────────────────
-
 async function uploadOne(
   entry: FileEntry,
   groupId: string | null,
+  reservationId: string,
   update: (id: string, patch: Partial<FileEntry>) => void
 ): Promise<string> {
   update(entry.id, { status: "uploading", progress: 10, error: null });
@@ -353,10 +417,14 @@ async function uploadOne(
         name: entry.file.name,
         fileType: entry.fileType,
         groupId,
+        reservationId,
       }),
     });
 
-    if (!createRes.ok) throw new Error("Failed to create document record");
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({}));
+      throw new Error(err.error ?? "Failed to create document record");
+    }
 
     const { documentId, storagePath, signedUploadUrl, fileUrl } = await createRes.json();
     update(entry.id, { progress: 25, documentId });

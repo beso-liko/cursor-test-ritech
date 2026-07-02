@@ -17,6 +17,8 @@ const en = {
   "sidebar.features.quizzes": "Auto Quizzes",
   "sidebar.nav.account": "Account Settings",
   "sidebar.nav.account.desc": "Profile & security",
+  "sidebar.nav.admin": "Admin",
+  "sidebar.nav.admin.desc": "Manage upload limits",
   "sidebar.nav.contact": "Contact",
   "sidebar.nav.contact.desc": "Get in touch with us",
   "footer.legal.label": "Legal",
@@ -176,6 +178,9 @@ const en = {
   "uploader.button.upload": "Upload & Process",
   "uploader.button.uploadAll": "Upload & Process {n} Files",
   "uploader.button.retry": "Try again",
+  "uploader.usage.limited": "{used} / {limit} uploads used this month",
+  "uploader.usage.unlimited": "{used} uploads this month (unlimited)",
+  "uploader.usage.resets": "Resets on {date}",
 
   // Group detail page
   "group.title": "Study Set ({n} files)",
@@ -349,6 +354,8 @@ const sq: typeof en = {
   "sidebar.features.quizzes": "Kuize Automatike",
   "sidebar.nav.account": "Cilësimet e Llogarisë",
   "sidebar.nav.account.desc": "Profili & siguria",
+  "sidebar.nav.admin": "Admin",
+  "sidebar.nav.admin.desc": "Menaxho limitet e ngarkimit",
   "sidebar.nav.contact": "Kontakti",
   "sidebar.nav.contact.desc": "Na kontaktoni",
   "footer.legal.label": "Ligjore",
@@ -510,6 +517,9 @@ const sq: typeof en = {
   "uploader.button.upload": "Ngarko & Përpuno",
   "uploader.button.uploadAll": "Ngarko & Përpuno {n} Skedarë",
   "uploader.button.retry": "Provoni sërish",
+  "uploader.usage.limited": "{used} / {limit} ngarkime të përdorura këtë muaj",
+  "uploader.usage.unlimited": "{used} ngarkime këtë muaj (pa limit)",
+  "uploader.usage.resets": "Rifillon më {date}",
 
   // Group detail page
   "group.title": "Set Studimi ({n} skedarë)",
