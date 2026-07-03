@@ -32,7 +32,7 @@ export default function SelectableContent({
     clearSelection();
   };
 
-  const preventSelectionClear = (e: React.PointerEvent) => {
+  const preventSelectionClear = (e: React.SyntheticEvent) => {
     e.preventDefault();
   };
 
