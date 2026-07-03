@@ -51,14 +51,11 @@ export default function ChatInterface({
   };
 
   const fetchUsage = useCallback(async () => {
-    const params = new URLSearchParams(
-      groupId ? { groupId } : { documentId: documentId! }
-    );
-    const res = await fetch(`/api/chat/usage?${params.toString()}`);
+    const res = await fetch("/api/chat/usage");
     if (res.ok) {
       setUsage(await res.json());
     }
-  }, [documentId, groupId]);
+  }, []);
 
   useEffect(() => {
     void fetchUsage();

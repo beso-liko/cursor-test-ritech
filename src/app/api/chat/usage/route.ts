@@ -1,32 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { getChatUsageSnapshot } from "@/lib/chat/limits";
 import { formatResetDate, getNextResetDate } from "@/lib/upload/period";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const auth = await requireApiUser();
     if (auth instanceof NextResponse) return auth;
 
-    const documentId = req.nextUrl.searchParams.get("documentId");
-    const groupId = req.nextUrl.searchParams.get("groupId");
-
-    if (!documentId && !groupId) {
-      return NextResponse.json(
-        { error: "documentId or groupId is required" },
-        { status: 400 }
-      );
-    }
-
-    if (documentId && groupId) {
-      return NextResponse.json(
-        { error: "Provide documentId or groupId, not both" },
-        { status: 400 }
-      );
-    }
-
-    const target = documentId ? { documentId } : { groupId: groupId! };
-    const usage = await getChatUsageSnapshot(auth.user.supabaseUserId, target);
+    const usage = await getChatUsageSnapshot(auth.user.supabaseUserId);
     const resetsOn = formatResetDate(
       getNextResetDate(usage.timezone),
       usage.timezone

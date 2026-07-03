@@ -259,7 +259,7 @@ const en = {
   "chat.usage.limited": "{used} / {limit} responses used this month",
   "chat.usage.resets": "Resets {date}",
   "chat.limit.reached":
-    "You have reached your monthly chat limit for this file ({used}/{limit} responses used). Wait until next month or contact support.",
+    "You have reached your monthly chat limit ({used}/{limit} responses used). Wait until next month or contact support.",
   "chat.offTopic":
     "I can only generate study material related to your uploaded document. This topic appears to be outside that scope.",
 
@@ -637,7 +637,7 @@ const sq: typeof en = {
   "chat.usage.limited": "{used} / {limit} përgjigje të përdorura këtë muaj",
   "chat.usage.resets": "Rifillon më {date}",
   "chat.limit.reached":
-    "Keni arritur limitin mujor të bisedës për këtë skedar ({used}/{limit} përgjigje të përdorura). Prisni deri muajin tjetër ose kontaktoni mbështetjen.",
+    "Keni arritur limitin mujor të bisedës ({used}/{limit} përgjigje të përdorura). Prisni deri muajin tjetër ose kontaktoni mbështetjen.",
   "chat.offTopic":
     "Mund të gjeneroj vetëm materiale studimi që lidhen me dokumentin tuaj të ngarkuar. Kjo temë duket se është jashtë fushës së tij.",
 

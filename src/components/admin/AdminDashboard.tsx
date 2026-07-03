@@ -174,8 +174,8 @@ export default function AdminDashboard() {
 
   const formatChatLimit = (user: AdminUser) =>
     user.chatUnlimited
-      ? "Unlimited per file"
-      : `${user.chatLimit ?? DEFAULT_MONTHLY_CHAT_LIMIT} per file / month`;
+      ? "Unlimited"
+      : `${user.chatLimit ?? DEFAULT_MONTHLY_CHAT_LIMIT} / month`;
 
   if (loading) {
     return (

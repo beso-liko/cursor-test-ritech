@@ -127,13 +127,7 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: relevanceResult.error }), { status: 422 });
     }
 
-    const chatTarget = groupId
-      ? { groupId: groupId as string }
-      : { documentId: documentId as string };
-    const consumeResult = await consumeChatResponse(
-      user.supabaseUserId,
-      chatTarget
-    );
+    const consumeResult = await consumeChatResponse(user.supabaseUserId);
 
     if (!consumeResult.ok) {
       return new Response(
