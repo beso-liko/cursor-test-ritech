@@ -262,6 +262,9 @@ const en = {
     "You have reached your monthly chat limit ({used}/{limit} responses used). Wait until next month or contact support.",
   "chat.offTopic":
     "I can only generate study material related to your uploaded document. This topic appears to be outside that scope.",
+  "chat.error":
+    "Something went wrong while generating a response. Please try again.",
+  "chat.retry": "Try again",
 
   // Generation focus dialog
   "generateFocus.title": "How should we generate your study materials?",
@@ -640,6 +643,9 @@ const sq: typeof en = {
     "Keni arritur limitin mujor të bisedës ({used}/{limit} përgjigje të përdorura). Prisni deri muajin tjetër ose kontaktoni mbështetjen.",
   "chat.offTopic":
     "Mund të gjeneroj vetëm materiale studimi që lidhen me dokumentin tuaj të ngarkuar. Kjo temë duket se është jashtë fushës së tij.",
+  "chat.error":
+    "Diçka shkoi keq gjatë gjenerimit të përgjigjes. Ju lutemi provoni përsëri.",
+  "chat.retry": "Provo përsëri",
 
   // Generation focus dialog
   "generateFocus.title": "Si duhet të gjenerojmë materialet tuaja të studimit?",

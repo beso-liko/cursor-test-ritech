@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat, type Message } from "ai/react";
-import { Send, Loader2, Bot, User, MessageSquare } from "lucide-react";
+import { Send, Loader2, Bot, User, MessageSquare, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,6 +25,52 @@ interface ChatUsage {
   unlimited: boolean;
   remaining: number | null;
   resetsOn?: string;
+}
+
+type ParsedChatError = {
+  error?: string;
+  code?: string;
+};
+
+function getMessageText(msg: Message): string {
+  if (typeof msg.content === "string") return msg.content;
+  return String(msg.content ?? "");
+}
+
+function parseChatApiError(error: Error): ParsedChatError | null {
+  const raw = error.message.trim();
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as ParsedChatError;
+  } catch {
+    // useChat sometimes embeds JSON inside a longer message
+  }
+
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]) as ParsedChatError;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function withoutEmptyAssistantMessages(messages: Message[]): Message[] {
+  return messages.filter(
+    (msg) => !(msg.role === "assistant" && !getMessageText(msg).trim())
+  );
+}
+
+function toStorableMessages(messages: Message[]): Message[] {
+  return withoutEmptyAssistantMessages(messages).map(({ id, role, content }) => ({
+    id,
+    role,
+    content,
+  }));
 }
 
 export default function ChatInterface({
@@ -64,70 +110,103 @@ export default function ChatInterface({
   const atLimit =
     usage != null && !usage.unlimited && (usage.remaining ?? 0) <= 0;
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } =
-    useChat({
-      api: "/api/chat",
-      body: chatBody,
-      initialMessages: initialMessages ?? [],
-      onError: (error) => {
-        let parsed: { error?: string; code?: string } | null = null;
-        try {
-          parsed = JSON.parse(error.message);
-        } catch {
-          // ignore
-        }
+  const appendAssistantMessage = useCallback(
+    (content: string, setMessages: (fn: (prev: Message[]) => Message[]) => void) => {
+      setMessages((prev) => [
+        ...withoutEmptyAssistantMessages(prev),
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content,
+          createdAt: new Date(),
+        },
+      ]);
+    },
+    []
+  );
 
-        if (parsed?.code === "chat_limit_exceeded") {
-          setLimitError(parsed.error ?? t("chat.limit.reached"));
-          void fetchUsage();
-          return;
-        }
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    setMessages,
+    reload,
+  } = useChat({
+    api: "/api/chat",
+    body: chatBody,
+    initialMessages: initialMessages ?? [],
+    onError: (error) => {
+      const parsed = parseChatApiError(error);
 
-        let isOffTopic = false;
-        if (parsed?.error === "off_topic") isOffTopic = true;
-        if (!isOffTopic && error.message.includes("off_topic")) isOffTopic = true;
+      if (parsed?.code === "chat_limit_exceeded") {
+        setLimitError(
+          parsed.error ??
+            t("chat.limit.reached", {
+              used: usage?.used ?? 0,
+              limit: usage?.limit ?? 20,
+            })
+        );
+        setMessages((prev) => withoutEmptyAssistantMessages(prev));
+        void fetchUsage();
+        return;
+      }
 
-        if (isOffTopic) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              role: "assistant",
-              content: t("chat.offTopic"),
-              createdAt: new Date(),
-            },
-          ]);
-        }
-      },
-    });
+      if (parsed?.error === "off_topic" || error.message.includes("off_topic")) {
+        appendAssistantMessage(t("chat.offTopic"), setMessages);
+        return;
+      }
+
+      appendAssistantMessage(t("chat.error"), setMessages);
+    },
+  });
+
+  const visibleMessages = withoutEmptyAssistantMessages(messages);
+  const hasUnansweredUser =
+    !isLoading &&
+    visibleMessages.length > 0 &&
+    visibleMessages[visibleMessages.length - 1]?.role === "user";
 
   // Keep refs in sync
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading, hasUnansweredUser]);
+
+  const saveSession = useCallback(
+    (msgs: Message[]) => {
+      const storable = toStorableMessages(msgs);
+      if (storable.length === 0) return;
+
+      const key = groupId ? { groupId } : { documentId };
+      fetch("/api/chat-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...key, messages: storable }),
+        keepalive: true,
+      }).catch(console.error);
+    },
+    [documentId, groupId]
+  );
 
   // Layer 1 — save the user message immediately when sent, before the AI replies.
-  // This ensures the user's question is persisted even if they navigate away during generation.
   useEffect(() => {
     if (messages.length > prevCountRef.current) {
       const lastMsg = messages[messages.length - 1];
       prevCountRef.current = messages.length;
       if (lastMsg?.role === "user") {
-        const key = groupId ? { groupId } : { documentId };
-        const storable = messages.map(({ id, role, content }) => ({ id, role, content }));
-        fetch("/api/chat-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...key, messages: storable }),
-          keepalive: true,
-        }).catch(console.error);
+        saveSession(messages);
       }
     }
-  }, [messages, documentId, groupId]);
+  }, [messages, saveSession]);
 
   // Layer 2 — save the full exchange once the AI finishes streaming.
   useEffect(() => {
@@ -135,22 +214,12 @@ export default function ChatInterface({
     prevLoadingRef.current = isLoading;
 
     if (justFinished && messages.length > 0) {
-      const key = groupId ? { groupId } : { documentId };
-      const storable = messages.map(({ id, role, content }) => ({ id, role, content }));
-      fetch("/api/chat-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...key, messages: storable }),
-        keepalive: true,
-      }).catch(console.error);
+      saveSession(messages);
       void fetchUsage();
     }
-  }, [isLoading, messages, documentId, groupId, fetchUsage]);
+  }, [isLoading, messages, saveSession, fetchUsage]);
 
   // Layer 3 — save on unmount (full page navigation).
-  // keepalive: true lets the request complete even after the page starts unloading.
-  // If the AI was mid-stream, strip the incomplete assistant message so only
-  // finished exchanges are stored (the user message was already saved by Layer 1).
   useEffect(() => {
     return () => {
       let msgs = messagesRef.current;
@@ -158,15 +227,7 @@ export default function ChatInterface({
       if (isLoadingRef.current && msgs[msgs.length - 1]?.role === "assistant") {
         msgs = msgs.slice(0, -1);
       }
-      if (msgs.length === 0) return;
-      const key = groupId ? { groupId } : { documentId };
-      const storable = msgs.map(({ id, role, content }) => ({ id, role, content }));
-      fetch("/api/chat-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...key, messages: storable }),
-        keepalive: true,
-      }).catch(console.error);
+      saveSession(msgs);
     };
   // documentId / groupId are stable for the lifetime of this component instance
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -192,7 +253,7 @@ export default function ChatInterface({
     <div className="flex flex-col h-[480px] md:h-[600px]">
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 pr-4">
-        {messages.length === 0 ? (
+        {visibleMessages.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-3">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
               <MessageSquare className="w-7 h-7 text-primary" />
@@ -229,36 +290,39 @@ export default function ChatInterface({
           </div>
         ) : (
           <SelectableContent className="space-y-4 py-4">
-            {messages.map((msg: Message) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex gap-3",
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
-                {msg.role === "assistant" && (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="w-4 h-4 text-primary" />
-                  </div>
-                )}
+            {visibleMessages.map((msg: Message) => {
+              const text = getMessageText(msg);
+              return (
                 <div
+                  key={msg.id}
                   className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-accent text-foreground rounded-bl-sm"
+                    "flex gap-3",
+                    msg.role === "user" ? "justify-end" : "justify-start"
                   )}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                </div>
-                {msg.role === "user" && (
-                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-0.5">
-                    <User className="w-4 h-4 text-secondary-foreground" />
+                  {msg.role === "assistant" && (
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Bot className="w-4 h-4 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-accent text-foreground rounded-bl-sm"
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap">{text}</p>
                   </div>
-                )}
-              </div>
-            ))}
+                  {msg.role === "user" && (
+                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-4 h-4 text-secondary-foreground" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {isLoading && (
               <div className="flex gap-3">
                 <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -266,6 +330,30 @@ export default function ChatInterface({
                 </div>
                 <div className="bg-accent rounded-2xl rounded-bl-sm px-4 py-3">
                   <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              </div>
+            )}
+            {hasUnansweredUser && (
+              <div className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="w-4 h-4 text-destructive" />
+                </div>
+                <div className="max-w-[80%] rounded-2xl rounded-bl-sm border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm">
+                  <p className="text-foreground">{t("chat.error")}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 h-8 gap-1.5 text-xs"
+                    disabled={atLimit}
+                    onClick={() => {
+                      setLimitError(null);
+                      void reload();
+                    }}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    {t("chat.retry")}
+                  </Button>
                 </div>
               </div>
             )}
