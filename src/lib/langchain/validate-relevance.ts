@@ -23,6 +23,7 @@ function messageText(msg: ChatMessage): string {
 
 /** Enrich short follow-ups with recent conversation context for retrieval. */
 export function buildRelevanceQuery(messages: ChatMessage[]): string {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
   const normalized = messages
     .map((msg) => ({ role: msg.role, content: messageText(msg) }))
     .filter((msg) => msg.content.length > 0);

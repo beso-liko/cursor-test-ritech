@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { streamText } from "ai";
+import { streamText, convertToCoreMessages, type Message } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
@@ -158,13 +158,16 @@ export async function POST(req: NextRequest) {
     const result = streamText({
       model: openai("gpt-4o-mini"),
       system: buildSystemPrompt(sourceDesc, context, langLine, generationFocus),
-      messages,
+      messages: convertToCoreMessages(
+        (Array.isArray(messages) ? messages : []) as Message[]
+      ),
       temperature: 0.3,
     });
 
     return result.toDataStreamResponse();
   } catch (err) {
-    console.error("Chat error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Chat error:", message, err);
     return new Response(JSON.stringify({ error: "Chat failed" }), {
       status: 500,
     });
