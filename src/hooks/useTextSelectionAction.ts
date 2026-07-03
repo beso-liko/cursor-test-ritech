@@ -83,11 +83,13 @@ export function useTextSelectionAction(
 
     document.addEventListener("mouseup", handleSelectionEnd);
     document.addEventListener("touchend", handleSelectionEnd);
+    document.addEventListener("selectionchange", handleSelectionEnd);
     document.addEventListener("scroll", () => setSelection(null), true);
 
     return () => {
       document.removeEventListener("mouseup", handleSelectionEnd);
       document.removeEventListener("touchend", handleSelectionEnd);
+      document.removeEventListener("selectionchange", handleSelectionEnd);
     };
   }, [enabled, updateSelection]);
 
