@@ -44,12 +44,30 @@ export function isBroadDocumentQuestion(query: string): boolean {
   if (!normalized) return false;
 
   return (
-    /\b(summari[sz]e|summary|overview|main idea|key concept|important topic|most important|core theme|central theme|big picture|what is this about|what's this about|tell me about this|explain this document|explain the document)\b/i.test(
+    /\b(summari[sz]e|summary|overview|main idea|key concept|important topic|most important|core theme|central theme|big picture|what is this about|what's this about|tell me about this|explain this document|explain the document|tell me more|explain more|go on|continue|elaborate|more detail|more about)\b/i.test(
       normalized
     ) ||
-    /\b(përmbledh|përmbledhni|ide(kryesore)?|konceptet kryesore|tema më e rëndësishme|temën më të rëndësishme|çfarë është)\b/i.test(
+    /\b(përmbledh|përmbledhni|ide(kryesore)?|konceptet kryesore|tema më e rëndësishme|temën më të rëndësishme|çfarë është|më shumë|vazhdo|shpjego më shumë)\b/i.test(
       normalized
     )
+  );
+}
+
+/** Short follow-ups that refer to the ongoing conversation rather than the document text. */
+export function isContextualFollowUp(query: string): boolean {
+  const normalized = query.toLowerCase().trim();
+  if (!normalized || normalized.length > 160) return false;
+
+  return (
+    /\b(that|this|it|those|these|there)\b/.test(normalized) ||
+    /\b(tell me more|say more|go on|continue|elaborate|expand on|explain (more|further|that|this|it)|what about|how about|why is that|is that|does that|can you clarify|more detail|more info)\b/.test(
+      normalized
+    ) ||
+    /^(yes|no|ok|okay|why|how|really)\??$/.test(normalized) ||
+    (/\b(difficult|hard|easy|simple|confusing|clear|understand|concept|topic|idea)\b/.test(
+      normalized
+    ) &&
+      normalized.length < 80)
   );
 }
 
@@ -77,7 +95,7 @@ export async function retrieveChatContext(
 ): Promise<ScoredDoc[]> {
   const specific = await retrieveContextWithScores(query, documentId, topK, userId);
 
-  if (isBroadDocumentQuestion(query)) {
+  if (isBroadDocumentQuestion(query) || isContextualFollowUp(query)) {
     const broad = await retrieveContextWithScores(
       BROAD_RETRIEVAL_QUERY,
       documentId,
@@ -114,7 +132,7 @@ export async function retrieveChatContextForDocuments(
     userId
   );
 
-  if (isBroadDocumentQuestion(query)) {
+  if (isBroadDocumentQuestion(query) || isContextualFollowUp(query)) {
     const broad = await retrieveContextForDocumentsWithScores(
       BROAD_RETRIEVAL_QUERY,
       documentIds,

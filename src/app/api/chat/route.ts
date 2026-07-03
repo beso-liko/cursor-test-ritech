@@ -4,7 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireApiUser } from "@/lib/auth/require-api-user";
 import { getOwnedDocument, getOwnedGroup } from "@/lib/supabase/user-queries";
-import { validateQueryRelevance } from "@/lib/langchain/validate-relevance";
+import { validateQueryRelevance, buildRelevanceQuery } from "@/lib/langchain/validate-relevance";
 import {
   getStoredGenerationFocus,
   normalizeGenerationFocus,
@@ -80,7 +80,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const userMessage = messages[messages.length - 1]?.content ?? "";
+    const relevanceQuery = buildRelevanceQuery(messages);
+    const hasConversationHistory =
+      messages.filter((m: { role: string }) => m.role === "user").length > 1;
     const supabase = createAdminClient();
     const isGroup = Boolean(groupId);
 
@@ -112,14 +114,16 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      relevanceResult = await validateQueryRelevance(userMessage, {
+      relevanceResult = await validateQueryRelevance(relevanceQuery, {
         documentIds: docIds,
         userId: user.supabaseUserId,
+        hasConversationHistory,
       });
     } else {
-      relevanceResult = await validateQueryRelevance(userMessage, {
+      relevanceResult = await validateQueryRelevance(relevanceQuery, {
         documentId,
         userId: user.supabaseUserId,
+        hasConversationHistory,
       });
     }
 

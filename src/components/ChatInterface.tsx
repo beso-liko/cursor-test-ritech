@@ -65,8 +65,20 @@ function withoutEmptyAssistantMessages(messages: Message[]): Message[] {
   );
 }
 
-function toStorableMessages(messages: Message[]): Message[] {
-  return withoutEmptyAssistantMessages(messages).map(({ id, role, content }) => ({
+function withoutFailedAssistantMessages(
+  messages: Message[],
+  errorText: string
+): Message[] {
+  return messages.filter(
+    (msg) => !(msg.role === "assistant" && getMessageText(msg) === errorText)
+  );
+}
+
+function toStorableMessages(messages: Message[], errorText: string): Message[] {
+  return withoutFailedAssistantMessages(
+    withoutEmptyAssistantMessages(messages),
+    errorText
+  ).map(({ id, role, content }) => ({
     id,
     role,
     content,
@@ -161,11 +173,16 @@ export default function ChatInterface({
         return;
       }
 
-      appendAssistantMessage(t("chat.error"), setMessages);
+      // Leave the user message in place and show the retry banner below it.
+      setMessages((prev) => withoutEmptyAssistantMessages(prev));
     },
   });
 
-  const visibleMessages = withoutEmptyAssistantMessages(messages);
+  const errorText = t("chat.error");
+  const visibleMessages = withoutFailedAssistantMessages(
+    withoutEmptyAssistantMessages(messages),
+    errorText
+  );
   const hasUnansweredUser =
     !isLoading &&
     visibleMessages.length > 0 &&
@@ -186,7 +203,7 @@ export default function ChatInterface({
 
   const saveSession = useCallback(
     (msgs: Message[]) => {
-      const storable = toStorableMessages(msgs);
+      const storable = toStorableMessages(msgs, errorText);
       if (storable.length === 0) return;
 
       const key = groupId ? { groupId } : { documentId };
@@ -197,7 +214,7 @@ export default function ChatInterface({
         keepalive: true,
       }).catch(console.error);
     },
-    [documentId, groupId]
+    [documentId, groupId, errorText]
   );
 
   // Layer 1 — save the user message immediately when sent, before the AI replies.
