@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth/require-superuser";
 import { createAdminClient } from "@/lib/supabase/server";
-import { resetChatUsageForUser, getEffectiveChatLimit } from "@/lib/chat/limits";
+import { resetChatUsageForUser, getEffectiveChatLimit, getChatUsageCount } from "@/lib/chat/limits";
 import {
   getEffectiveLimit,
   getUsageCount,
@@ -146,6 +146,7 @@ export async function PATCH(
     if (updatedError) throw updatedError;
 
     const uploadUsed = await getUsageCount(id, periodKey);
+    const chatUsed = await getChatUsageCount(id, periodKey);
     const uploadProfile = {
       timezone: updatedProfile.timezone ?? "UTC",
       upload_limit_override: updatedProfile.upload_limit_override,
@@ -166,6 +167,7 @@ export async function PATCH(
         uploadLimit: getEffectiveLimit(uploadProfile),
         uploadUnlimited: uploadProfile.upload_unlimited,
         chatLimit: getEffectiveChatLimit(chatProfile),
+        chatUsed,
         chatUnlimited: chatProfile.chat_unlimited,
         periodKey,
       },

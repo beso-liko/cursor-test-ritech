@@ -5,7 +5,7 @@ import {
   getEffectiveLimit,
   getUsageCount,
 } from "@/lib/upload/limits";
-import { getEffectiveChatLimit } from "@/lib/chat/limits";
+import { getEffectiveChatLimit, getChatUsageCount } from "@/lib/chat/limits";
 import { getPeriodKey } from "@/lib/upload/period";
 
 export async function GET() {
@@ -29,6 +29,7 @@ export async function GET() {
         const timezone = profile.timezone ?? "UTC";
         const periodKey = getPeriodKey(timezone);
         const uploadUsed = await getUsageCount(profile.id, periodKey);
+        const chatUsed = await getChatUsageCount(profile.id, periodKey);
         const uploadProfile = {
           timezone,
           upload_limit_override: profile.upload_limit_override,
@@ -48,6 +49,7 @@ export async function GET() {
           uploadLimit: getEffectiveLimit(uploadProfile),
           uploadUnlimited: uploadProfile.upload_unlimited,
           chatLimit: getEffectiveChatLimit(chatProfile),
+          chatUsed,
           chatUnlimited: chatProfile.chat_unlimited,
           periodKey,
         };

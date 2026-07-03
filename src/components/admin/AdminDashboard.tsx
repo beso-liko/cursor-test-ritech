@@ -16,6 +16,7 @@ type AdminUser = {
   uploadLimit: number | null;
   uploadUnlimited: boolean;
   chatLimit: number | null;
+  chatUsed: number;
   chatUnlimited: boolean;
   periodKey: string;
 };
@@ -172,10 +173,10 @@ export default function AdminDashboard() {
       ? `${user.uploadUsed} / Unlimited`
       : `${user.uploadUsed} / ${user.uploadLimit ?? DEFAULT_MONTHLY_UPLOAD_LIMIT}`;
 
-  const formatChatLimit = (user: AdminUser) =>
+  const formatChatUsage = (user: AdminUser) =>
     user.chatUnlimited
-      ? "Unlimited"
-      : `${user.chatLimit ?? DEFAULT_MONTHLY_CHAT_LIMIT} / month`;
+      ? `${user.chatUsed} / Unlimited`
+      : `${user.chatUsed} / ${user.chatLimit ?? DEFAULT_MONTHLY_CHAT_LIMIT}`;
 
   if (loading) {
     return (
@@ -242,7 +243,7 @@ export default function AdminDashboard() {
                       }
                       onAction={(body) => updateUser(user.id, body)}
                       labels={{
-                        usage: formatChatLimit(user),
+                        usage: formatChatUsage(user),
                         setLimit: "Set limit",
                         resetLimit: "Reset limit",
                         removeLimit: "Remove limit",
@@ -304,7 +305,7 @@ export default function AdminDashboard() {
                 }
                 onAction={(body) => updateUser(user.id, body)}
                 labels={{
-                  usage: `Chat: ${formatChatLimit(user)}`,
+                  usage: `Chat: ${formatChatUsage(user)}`,
                   setLimit: "Set chat limit",
                   resetLimit: "Reset chat limit",
                   removeLimit: "Unlimited chat",
