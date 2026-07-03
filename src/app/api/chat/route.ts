@@ -9,6 +9,10 @@ import {
   getStoredGenerationFocus,
   normalizeGenerationFocus,
 } from "@/lib/generation/focus";
+import {
+  consumeChatResponse,
+  formatChatLimitExceededMessage,
+} from "@/lib/chat/consume";
 
 export const maxDuration = 60;
 
@@ -121,6 +125,25 @@ export async function POST(req: NextRequest) {
 
     if (!relevanceResult.valid) {
       return new Response(JSON.stringify({ error: relevanceResult.error }), { status: 422 });
+    }
+
+    const chatTarget = groupId
+      ? { groupId: groupId as string }
+      : { documentId: documentId as string };
+    const consumeResult = await consumeChatResponse(
+      user.supabaseUserId,
+      chatTarget
+    );
+
+    if (!consumeResult.ok) {
+      return new Response(
+        JSON.stringify({
+          error: formatChatLimitExceededMessage(consumeResult.usage),
+          code: "chat_limit_exceeded",
+          usage: consumeResult.usage,
+        }),
+        { status: 429 }
+      );
     }
 
     const context = relevanceResult.context;

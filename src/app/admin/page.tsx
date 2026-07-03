@@ -24,7 +24,7 @@ export default async function AdminPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage upload limits and monthly usage for all users.
+            Manage upload limits, chat limits, and monthly usage for all users.
           </p>
         </div>
         <AdminDashboard />

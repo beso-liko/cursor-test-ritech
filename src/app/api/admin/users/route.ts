@@ -5,6 +5,7 @@ import {
   getEffectiveLimit,
   getUsageCount,
 } from "@/lib/upload/limits";
+import { getEffectiveChatLimit } from "@/lib/chat/limits";
 import { getPeriodKey } from "@/lib/upload/period";
 
 export async function GET() {
@@ -16,7 +17,7 @@ export async function GET() {
     const { data: profiles, error } = await admin
       .from("profiles")
       .select(
-        "id, email, timezone, upload_limit_override, upload_unlimited"
+        "id, email, timezone, upload_limit_override, upload_unlimited, chat_limit_override, chat_unlimited"
       )
       .not("email", "is", null)
       .order("email", { ascending: true });
@@ -27,21 +28,27 @@ export async function GET() {
       (profiles ?? []).map(async (profile) => {
         const timezone = profile.timezone ?? "UTC";
         const periodKey = getPeriodKey(timezone);
-        const used = await getUsageCount(profile.id, periodKey);
-        const limitProfile = {
+        const uploadUsed = await getUsageCount(profile.id, periodKey);
+        const uploadProfile = {
           timezone,
           upload_limit_override: profile.upload_limit_override,
           upload_unlimited: profile.upload_unlimited ?? false,
         };
-        const limit = getEffectiveLimit(limitProfile);
+        const chatProfile = {
+          timezone,
+          chat_limit_override: profile.chat_limit_override,
+          chat_unlimited: profile.chat_unlimited ?? false,
+        };
 
         return {
           id: profile.id,
           email: profile.email,
           timezone,
-          used,
-          limit,
-          unlimited: limitProfile.upload_unlimited,
+          uploadUsed,
+          uploadLimit: getEffectiveLimit(uploadProfile),
+          uploadUnlimited: uploadProfile.upload_unlimited,
+          chatLimit: getEffectiveChatLimit(chatProfile),
+          chatUnlimited: chatProfile.chat_unlimited,
           periodKey,
         };
       })

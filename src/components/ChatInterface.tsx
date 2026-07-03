@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat, type Message } from "ai/react";
 import { Send, Loader2, Bot, User, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,14 @@ interface ChatInterfaceProps {
   initialMessages?: Message[];
 }
 
+interface ChatUsage {
+  used: number;
+  limit: number | null;
+  unlimited: boolean;
+  remaining: number | null;
+  resetsOn?: string;
+}
+
 export default function ChatInterface({
   documentId,
   groupId,
@@ -28,6 +36,8 @@ export default function ChatInterface({
   const { t, locale } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLoadingRef = useRef(false);
+  const [usage, setUsage] = useState<ChatUsage | null>(null);
+  const [limitError, setLimitError] = useState<string | null>(null);
 
   // Refs so cleanup and event handlers always have fresh values without re-registering effects
   const messagesRef = useRef<Message[]>(initialMessages ?? []);
@@ -40,19 +50,45 @@ export default function ChatInterface({
     ...(generationFocus ? { generationFocus } : {}),
   };
 
+  const fetchUsage = useCallback(async () => {
+    const params = new URLSearchParams(
+      groupId ? { groupId } : { documentId: documentId! }
+    );
+    const res = await fetch(`/api/chat/usage?${params.toString()}`);
+    if (res.ok) {
+      setUsage(await res.json());
+    }
+  }, [documentId, groupId]);
+
+  useEffect(() => {
+    void fetchUsage();
+  }, [fetchUsage]);
+
+  const atLimit =
+    usage != null && !usage.unlimited && (usage.remaining ?? 0) <= 0;
+
   const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } =
     useChat({
       api: "/api/chat",
       body: chatBody,
       initialMessages: initialMessages ?? [],
       onError: (error) => {
-        let isOffTopic = false;
+        let parsed: { error?: string; code?: string } | null = null;
         try {
-          const parsed = JSON.parse(error.message);
-          if (parsed?.error === "off_topic") isOffTopic = true;
+          parsed = JSON.parse(error.message);
         } catch {
-          if (error.message.includes("off_topic")) isOffTopic = true;
+          // ignore
         }
+
+        if (parsed?.code === "chat_limit_exceeded") {
+          setLimitError(parsed.error ?? t("chat.limit.reached"));
+          void fetchUsage();
+          return;
+        }
+
+        let isOffTopic = false;
+        if (parsed?.error === "off_topic") isOffTopic = true;
+        if (!isOffTopic && error.message.includes("off_topic")) isOffTopic = true;
 
         if (isOffTopic) {
           setMessages((prev) => [
@@ -110,8 +146,9 @@ export default function ChatInterface({
         body: JSON.stringify({ ...key, messages: storable }),
         keepalive: true,
       }).catch(console.error);
+      void fetchUsage();
     }
-  }, [isLoading, messages, documentId, groupId]);
+  }, [isLoading, messages, documentId, groupId, fetchUsage]);
 
   // Layer 3 — save on unmount (full page navigation).
   // keepalive: true lets the request complete even after the page starts unloading.
@@ -141,7 +178,8 @@ export default function ChatInterface({
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (input.trim() && !isLoading) {
+      if (input.trim() && !isLoading && !atLimit) {
+        setLimitError(null);
         handleSubmit(e as unknown as React.FormEvent);
       }
     }
@@ -179,12 +217,13 @@ export default function ChatInterface({
               {suggestions.map((suggestion) => (
                 <button
                   key={suggestion}
+                  disabled={atLimit}
                   onClick={() => {
                     handleInputChange({
                       target: { value: suggestion },
                     } as React.ChangeEvent<HTMLTextAreaElement>);
                   }}
-                  className="text-xs border border-border rounded-full px-3 py-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                  className="text-xs border border-border rounded-full px-3 py-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {suggestion}
                 </button>
@@ -240,7 +279,28 @@ export default function ChatInterface({
 
       {/* Input */}
       <div className="border-t border-border pt-4 mt-2">
-        <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+        {limitError && (
+          <p className="mb-2 text-xs text-destructive">{limitError}</p>
+        )}
+        {atLimit && !limitError && (
+          <p className="mb-2 text-xs text-destructive">
+            {t("chat.limit.reached", {
+              used: usage?.used ?? 0,
+              limit: usage?.limit ?? 20,
+            })}
+          </p>
+        )}
+        <form
+          onSubmit={(e) => {
+            if (atLimit) {
+              e.preventDefault();
+              return;
+            }
+            setLimitError(null);
+            handleSubmit(e);
+          }}
+          className="flex gap-2 items-end"
+        >
           <Textarea
             value={input}
             onChange={handleInputChange}
@@ -248,11 +308,12 @@ export default function ChatInterface({
             placeholder={t("chat.placeholder")}
             className="resize-none min-h-[44px] max-h-32 text-sm"
             rows={1}
+            disabled={atLimit}
           />
           <Button
             type="submit"
             size="icon"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || atLimit}
             className="h-11 w-11 shrink-0"
           >
             {isLoading ? (
@@ -262,9 +323,20 @@ export default function ChatInterface({
             )}
           </Button>
         </form>
-        <p className="text-xs text-muted-foreground mt-1.5">
-          {t("chat.hint")}
-        </p>
+        <div className="mt-1.5 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">{t("chat.hint")}</p>
+          {usage && !usage.unlimited && usage.limit != null && (
+            <p className="text-xs text-muted-foreground">
+              {t("chat.usage.limited", {
+                used: usage.used,
+                limit: usage.limit,
+              })}
+              {usage.resetsOn
+                ? ` · ${t("chat.usage.resets", { date: usage.resetsOn })}`
+                : null}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

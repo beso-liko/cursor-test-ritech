@@ -18,7 +18,7 @@ const en = {
   "sidebar.nav.account": "Account Settings",
   "sidebar.nav.account.desc": "Profile & security",
   "sidebar.nav.admin": "Admin",
-  "sidebar.nav.admin.desc": "Manage upload limits",
+  "sidebar.nav.admin.desc": "Manage upload & chat limits",
   "sidebar.nav.contact": "Contact",
   "sidebar.nav.contact.desc": "Get in touch with us",
   "footer.legal.label": "Legal",
@@ -256,6 +256,10 @@ const en = {
   "chat.suggestion.3": "Explain the most important topic",
   "chat.placeholder": "Ask anything about this document…",
   "chat.hint": "Press Enter to send · Shift+Enter for new line",
+  "chat.usage.limited": "{used} / {limit} responses used this month",
+  "chat.usage.resets": "Resets {date}",
+  "chat.limit.reached":
+    "You have reached your monthly chat limit for this file ({used}/{limit} responses used). Wait until next month or contact support.",
   "chat.offTopic":
     "I can only generate study material related to your uploaded document. This topic appears to be outside that scope.",
 
@@ -389,7 +393,7 @@ const sq: typeof en = {
   "sidebar.nav.account": "Cilësimet e Llogarisë",
   "sidebar.nav.account.desc": "Profili & siguria",
   "sidebar.nav.admin": "Admin",
-  "sidebar.nav.admin.desc": "Menaxho limitet e ngarkimit",
+  "sidebar.nav.admin.desc": "Menaxho limitet e ngarkimit dhe bisedës",
   "sidebar.nav.contact": "Kontakti",
   "sidebar.nav.contact.desc": "Na kontaktoni",
   "footer.legal.label": "Ligjore",
@@ -630,6 +634,10 @@ const sq: typeof en = {
   "chat.suggestion.3": "Shpjegoni temën më të rëndësishme",
   "chat.placeholder": "Pyesni çdo gjë rreth këtij dokumenti…",
   "chat.hint": "Shtypni Enter për të dërguar · Shift+Enter për rresht të ri",
+  "chat.usage.limited": "{used} / {limit} përgjigje të përdorura këtë muaj",
+  "chat.usage.resets": "Rifillon më {date}",
+  "chat.limit.reached":
+    "Keni arritur limitin mujor të bisedës për këtë skedar ({used}/{limit} përgjigje të përdorura). Prisni deri muajin tjetër ose kontaktoni mbështetjen.",
   "chat.offTopic":
     "Mund të gjeneroj vetëm materiale studimi që lidhen me dokumentin tuaj të ngarkuar. Kjo temë duket se është jashtë fushës së tij.",
 

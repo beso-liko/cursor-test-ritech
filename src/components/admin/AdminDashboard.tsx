@@ -5,14 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_MONTHLY_CHAT_LIMIT } from "@/lib/chat/constants";
+import { DEFAULT_MONTHLY_UPLOAD_LIMIT } from "@/lib/upload/constants";
 
 type AdminUser = {
   id: string;
   email: string;
   timezone: string;
-  used: number;
-  limit: number | null;
-  unlimited: boolean;
+  uploadUsed: number;
+  uploadLimit: number | null;
+  uploadUnlimited: boolean;
+  chatLimit: number | null;
+  chatUnlimited: boolean;
   periodKey: string;
 };
 
@@ -39,11 +43,84 @@ function StatusMessage({ status }: { status: Status }) {
   );
 }
 
+function LimitControls({
+  isBusy,
+  draft,
+  onDraftChange,
+  onAction,
+  labels,
+}: {
+  isBusy: boolean;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onAction: (body: Record<string, unknown>) => void;
+  labels: {
+    usage: string;
+    setLimit: string;
+    resetLimit: string;
+    removeLimit: string;
+    resetUsage: string;
+    setAction: string;
+    resetAction: string;
+    removeAction: string;
+    resetUsageAction: string;
+  };
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">{labels.usage}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          className="w-24 h-8"
+          disabled={isBusy}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isBusy}
+          onClick={() => onAction({ action: labels.setAction, limit: Number(draft) })}
+        >
+          {labels.setLimit}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isBusy}
+          onClick={() => onAction({ action: labels.resetAction })}
+        >
+          {labels.resetLimit}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isBusy}
+          onClick={() => onAction({ action: labels.removeAction })}
+        >
+          {labels.removeLimit}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isBusy}
+          onClick={() => onAction({ action: labels.resetUsageAction })}
+        >
+          {labels.resetUsage}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<Status>(null);
-  const [draftLimits, setDraftLimits] = useState<Record<string, string>>({});
+  const [uploadDrafts, setUploadDrafts] = useState<Record<string, string>>({});
+  const [chatDrafts, setChatDrafts] = useState<Record<string, string>>({});
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
   const loadUsers = useCallback(async () => {
@@ -90,6 +167,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const formatUploadUsage = (user: AdminUser) =>
+    user.uploadUnlimited
+      ? `${user.uploadUsed} / Unlimited`
+      : `${user.uploadUsed} / ${user.uploadLimit ?? DEFAULT_MONTHLY_UPLOAD_LIMIT}`;
+
+  const formatChatLimit = (user: AdminUser) =>
+    user.chatUnlimited
+      ? "Unlimited per file"
+      : `${user.chatLimit ?? DEFAULT_MONTHLY_CHAT_LIMIT} per file / month`;
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -103,81 +190,69 @@ export default function AdminDashboard() {
     <div className="space-y-4">
       <StatusMessage status={status} />
 
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+      <div className="hidden lg:block overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
           <thead className="bg-muted/40">
             <tr className="text-left">
               <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Usage</th>
-              <th className="px-4 py-3 font-medium">Actions</th>
+              <th className="px-4 py-3 font-medium">Upload limits</th>
+              <th className="px-4 py-3 font-medium">Chat limits</th>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => {
               const isBusy = busyUserId === user.id;
-              const draft = draftLimits[user.id] ?? String(user.limit ?? 15);
+              const uploadDraft =
+                uploadDrafts[user.id] ??
+                String(user.uploadLimit ?? DEFAULT_MONTHLY_UPLOAD_LIMIT);
+              const chatDraft =
+                chatDrafts[user.id] ??
+                String(user.chatLimit ?? DEFAULT_MONTHLY_CHAT_LIMIT);
 
               return (
-                <tr key={user.id} className="border-t border-border">
-                  <td className="px-4 py-3 align-top">{user.email}</td>
-                  <td className="px-4 py-3 align-top">
-                    {user.unlimited
-                      ? `${user.used} / Unlimited`
-                      : `${user.used} / ${user.limit ?? 15}`}
+                <tr key={user.id} className="border-t border-border align-top">
+                  <td className="px-4 py-3">{user.email}</td>
+                  <td className="px-4 py-3">
+                    <LimitControls
+                      isBusy={isBusy}
+                      draft={uploadDraft}
+                      onDraftChange={(value) =>
+                        setUploadDrafts((prev) => ({ ...prev, [user.id]: value }))
+                      }
+                      onAction={(body) => updateUser(user.id, body)}
+                      labels={{
+                        usage: formatUploadUsage(user),
+                        setLimit: "Set limit",
+                        resetLimit: "Reset limit",
+                        removeLimit: "Remove limit",
+                        resetUsage: "Reset usage",
+                        setAction: "set_limit",
+                        resetAction: "reset_limit",
+                        removeAction: "remove_limit",
+                        resetUsageAction: "reset_usage",
+                      }}
+                    />
                   </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={draft}
-                        onChange={(e) =>
-                          setDraftLimits((prev) => ({
-                            ...prev,
-                            [user.id]: e.target.value,
-                          }))
-                        }
-                        className="w-24 h-8"
-                        disabled={isBusy || user.unlimited}
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={isBusy}
-                        onClick={() =>
-                          updateUser(user.id, {
-                            action: "set_limit",
-                            limit: Number(draft),
-                          })
-                        }
-                      >
-                        Set limit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={isBusy}
-                        onClick={() => updateUser(user.id, { action: "reset_limit" })}
-                      >
-                        Reset limit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={isBusy}
-                        onClick={() => updateUser(user.id, { action: "remove_limit" })}
-                      >
-                        Remove limit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={isBusy}
-                        onClick={() => updateUser(user.id, { action: "reset_usage" })}
-                      >
-                        Reset usage
-                      </Button>
-                    </div>
+                  <td className="px-4 py-3">
+                    <LimitControls
+                      isBusy={isBusy}
+                      draft={chatDraft}
+                      onDraftChange={(value) =>
+                        setChatDrafts((prev) => ({ ...prev, [user.id]: value }))
+                      }
+                      onAction={(body) => updateUser(user.id, body)}
+                      labels={{
+                        usage: formatChatLimit(user),
+                        setLimit: "Set limit",
+                        resetLimit: "Reset limit",
+                        removeLimit: "Remove limit",
+                        resetUsage: "Reset usage",
+                        setAction: "set_chat_limit",
+                        resetAction: "reset_chat_limit",
+                        removeAction: "remove_chat_limit",
+                        resetUsageAction: "reset_chat_usage",
+                      }}
+                    />
                   </td>
                 </tr>
               );
@@ -186,77 +261,60 @@ export default function AdminDashboard() {
         </table>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:hidden">
+      <div className="grid grid-cols-1 gap-3 lg:hidden">
         {users.map((user) => {
           const isBusy = busyUserId === user.id;
-          const draft = draftLimits[user.id] ?? String(user.limit ?? 15);
+          const uploadDraft =
+            uploadDrafts[user.id] ??
+            String(user.uploadLimit ?? DEFAULT_MONTHLY_UPLOAD_LIMIT);
+          const chatDraft =
+            chatDrafts[user.id] ??
+            String(user.chatLimit ?? DEFAULT_MONTHLY_CHAT_LIMIT);
 
           return (
-            <div key={user.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">{user.email}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {user.unlimited
-                    ? `${user.used} / Unlimited`
-                    : `${user.used} / ${user.limit ?? 15}`}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Input
-                  type="number"
-                  min={0}
-                  value={draft}
-                  onChange={(e) =>
-                    setDraftLimits((prev) => ({
-                      ...prev,
-                      [user.id]: e.target.value,
-                    }))
-                  }
-                  className="w-full h-8"
-                  disabled={isBusy || user.unlimited}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isBusy}
-                  onClick={() =>
-                    updateUser(user.id, {
-                      action: "set_limit",
-                      limit: Number(draft),
-                    })
-                  }
-                >
-                  Set limit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isBusy}
-                  onClick={() => updateUser(user.id, { action: "reset_limit" })}
-                >
-                  Reset limit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isBusy}
-                  onClick={() => updateUser(user.id, { action: "remove_limit" })}
-                >
-                  Remove limit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  disabled={isBusy}
-                  onClick={() => updateUser(user.id, { action: "reset_usage" })}
-                >
-                  Reset usage
-                </Button>
-              </div>
+            <div
+              key={user.id}
+              className="rounded-xl border border-border bg-card p-4 space-y-4"
+            >
+              <p className="text-sm font-medium text-foreground">{user.email}</p>
+              <LimitControls
+                isBusy={isBusy}
+                draft={uploadDraft}
+                onDraftChange={(value) =>
+                  setUploadDrafts((prev) => ({ ...prev, [user.id]: value }))
+                }
+                onAction={(body) => updateUser(user.id, body)}
+                labels={{
+                  usage: `Uploads: ${formatUploadUsage(user)}`,
+                  setLimit: "Set upload limit",
+                  resetLimit: "Reset upload limit",
+                  removeLimit: "Unlimited uploads",
+                  resetUsage: "Reset upload usage",
+                  setAction: "set_limit",
+                  resetAction: "reset_limit",
+                  removeAction: "remove_limit",
+                  resetUsageAction: "reset_usage",
+                }}
+              />
+              <LimitControls
+                isBusy={isBusy}
+                draft={chatDraft}
+                onDraftChange={(value) =>
+                  setChatDrafts((prev) => ({ ...prev, [user.id]: value }))
+                }
+                onAction={(body) => updateUser(user.id, body)}
+                labels={{
+                  usage: `Chat: ${formatChatLimit(user)}`,
+                  setLimit: "Set chat limit",
+                  resetLimit: "Reset chat limit",
+                  removeLimit: "Unlimited chat",
+                  resetUsage: "Reset chat usage",
+                  setAction: "set_chat_limit",
+                  resetAction: "reset_chat_limit",
+                  removeAction: "remove_chat_limit",
+                  resetUsageAction: "reset_chat_usage",
+                }}
+              />
             </div>
           );
         })}

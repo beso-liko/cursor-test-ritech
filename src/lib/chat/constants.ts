@@ -1,0 +1,1 @@
+export const DEFAULT_MONTHLY_CHAT_LIMIT = 20;
