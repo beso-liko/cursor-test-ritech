@@ -137,6 +137,9 @@ export default function ChatInterface({
     api: "/api/chat",
     body: chatBody,
     initialMessages: initialMessages ?? [],
+    onFinish: () => {
+      void fetchUsage();
+    },
     onError: (error) => {
       const parsed = parseChatApiError(error);
 

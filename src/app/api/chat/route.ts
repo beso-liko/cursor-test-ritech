@@ -12,9 +12,7 @@ import {
 import {
   consumeChatResponse,
   formatChatLimitExceededMessage,
-  isAtChatCap,
 } from "@/lib/chat/consume";
-import { getChatUsageSnapshot } from "@/lib/chat/limits";
 
 export const maxDuration = 60;
 
@@ -129,13 +127,14 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: relevanceResult.error }), { status: 422 });
     }
 
-    const usageSnapshot = await getChatUsageSnapshot(user.supabaseUserId);
-    if (isAtChatCap(usageSnapshot)) {
+    const consumeResult = await consumeChatResponse(user.supabaseUserId);
+
+    if (!consumeResult.ok) {
       return new Response(
         JSON.stringify({
-          error: formatChatLimitExceededMessage(usageSnapshot),
+          error: formatChatLimitExceededMessage(consumeResult.usage),
           code: "chat_limit_exceeded",
-          usage: usageSnapshot,
+          usage: consumeResult.usage,
         }),
         { status: 429 }
       );
@@ -152,20 +151,11 @@ export async function POST(req: NextRequest) {
       ? "study materials (multiple documents)"
       : "document";
 
-    const userId = user.supabaseUserId;
-
     const result = streamText({
       model: openai("gpt-4o-mini"),
       system: buildSystemPrompt(sourceDesc, context, langLine, generationFocus),
       messages,
       temperature: 0.3,
-      onFinish: async () => {
-        try {
-          await consumeChatResponse(userId);
-        } catch (err) {
-          console.error("Failed to record chat usage after stream:", err);
-        }
-      },
     });
 
     return result.toDataStreamResponse();
