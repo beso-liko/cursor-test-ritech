@@ -155,12 +155,18 @@ export async function POST(req: NextRequest) {
       ? "study materials (multiple documents)"
       : "document";
 
+    const storableMessages = (Array.isArray(messages) ? messages : []).filter(
+      (msg: Message) =>
+        !(
+          msg.role === "assistant" &&
+          (typeof msg.content !== "string" || !msg.content.trim())
+        )
+    ) as Message[];
+
     const result = streamText({
       model: openai("gpt-4o-mini"),
       system: buildSystemPrompt(sourceDesc, context, langLine, generationFocus),
-      messages: convertToCoreMessages(
-        (Array.isArray(messages) ? messages : []) as Message[]
-      ),
+      messages: convertToCoreMessages(storableMessages),
       temperature: 0.3,
     });
 

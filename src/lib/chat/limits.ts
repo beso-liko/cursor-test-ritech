@@ -52,11 +52,10 @@ export async function getChatUsageCount(
     .from("chat_usage")
     .select("response_count")
     .eq("user_id", userId)
-    .eq("period_key", periodKey)
-    .maybeSingle();
+    .eq("period_key", periodKey);
 
   if (error) throw error;
-  return data?.response_count ?? 0;
+  return (data ?? []).reduce((sum, row) => sum + row.response_count, 0);
 }
 
 export async function getChatUsageSnapshot(

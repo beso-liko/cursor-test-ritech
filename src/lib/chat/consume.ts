@@ -40,63 +40,66 @@ export async function consumeChatResponse(
     if (message.includes("PROFILE_NOT_FOUND")) {
       return { ok: false, code: "PROFILE_NOT_FOUND", usage };
     }
-    if (
-      message.includes("ON CONFLICT") ||
-      error.code === "42P10"
-    ) {
-      return consumeChatResponseDirect(userId, usage);
-    }
-    throw error;
+    console.warn("consume_chat_response RPC failed, using direct fallback:", message);
+    return consumeChatResponseDirect(userId, usage);
   }
 
   const refreshed = await getChatUsageSnapshot(userId);
   return { ok: true, usage: refreshed };
 }
 
-/** Fallback when the RPC hits a missing unique constraint on chat_usage. */
+/** Fallback when the RPC fails (missing PK, duplicate rows, etc.). */
 async function consumeChatResponseDirect(
   userId: string,
   usage: ChatUsageSnapshot
 ): Promise<ConsumeChatResponseResult> {
-  if (!usage.unlimited && usage.remaining != null && usage.remaining <= 0) {
-    return { ok: false, code: "LIMIT_EXCEEDED", usage };
+  const refreshedUsage = await getChatUsageSnapshot(userId);
+  if (
+    !refreshedUsage.unlimited &&
+    refreshedUsage.remaining != null &&
+    refreshedUsage.remaining <= 0
+  ) {
+    return { ok: false, code: "LIMIT_EXCEEDED", usage: refreshedUsage };
   }
 
   const admin = createAdminClient();
-  const { data: existing, error: selectError } = await admin
+  const { data: rows, error: selectError } = await admin
     .from("chat_usage")
     .select("response_count")
     .eq("user_id", userId)
-    .eq("period_key", usage.periodKey)
-    .maybeSingle();
+    .eq("period_key", refreshedUsage.periodKey);
 
   if (selectError) throw selectError;
 
-  if (existing) {
-    if (
-      !usage.unlimited &&
-      usage.limit != null &&
-      existing.response_count >= usage.limit
-    ) {
-      return { ok: false, code: "LIMIT_EXCEEDED", usage };
-    }
+  const currentCount = (rows ?? []).reduce(
+    (sum, row) => sum + row.response_count,
+    0
+  );
+  const nextCount = currentCount + 1;
 
-    const { error: updateError } = await admin
-      .from("chat_usage")
-      .update({ response_count: existing.response_count + 1 })
-      .eq("user_id", userId)
-      .eq("period_key", usage.periodKey);
-
-    if (updateError) throw updateError;
-  } else {
-    const { error: insertError } = await admin.from("chat_usage").insert({
-      user_id: userId,
-      period_key: usage.periodKey,
-      response_count: 1,
-    });
-
-    if (insertError) throw insertError;
+  if (
+    !refreshedUsage.unlimited &&
+    refreshedUsage.limit != null &&
+    nextCount > refreshedUsage.limit
+  ) {
+    return { ok: false, code: "LIMIT_EXCEEDED", usage: refreshedUsage };
   }
+
+  const { error: deleteError } = await admin
+    .from("chat_usage")
+    .delete()
+    .eq("user_id", userId)
+    .eq("period_key", refreshedUsage.periodKey);
+
+  if (deleteError) throw deleteError;
+
+  const { error: insertError } = await admin.from("chat_usage").insert({
+    user_id: userId,
+    period_key: refreshedUsage.periodKey,
+    response_count: nextCount,
+  });
+
+  if (insertError) throw insertError;
 
   const refreshed = await getChatUsageSnapshot(userId);
   return { ok: true, usage: refreshed };
