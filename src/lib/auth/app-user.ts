@@ -20,23 +20,28 @@ export function getClerkEmails(
 
 /** Resolve the signed-in Clerk user to their Supabase auth user. */
 export async function getAppUser(): Promise<AppUser | null> {
+  let clerkUserId: string | null = null;
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) return null;
-
-    const clerkUser = await currentUser();
-    if (!clerkUser) return null;
-
-    const clerkEmails = getClerkEmails(clerkUser);
-    if (clerkEmails.length === 0) return null;
-
-    return linkClerkToSupabase({
-      clerkUserId,
-      emails: clerkEmails,
-      firstName: clerkUser.firstName,
-      lastName: clerkUser.lastName,
-    });
+    ({ userId: clerkUserId } = await auth());
   } catch {
+    // auth() throws when the request did not pass through clerkMiddleware.
     return null;
   }
+  if (!clerkUserId) return null;
+
+  const clerkUser = await currentUser();
+  if (!clerkUser) return null;
+
+  const clerkEmails = getClerkEmails(clerkUser);
+  if (clerkEmails.length === 0) {
+    console.error("Clerk user has no email addresses:", clerkUserId);
+    return null;
+  }
+
+  return linkClerkToSupabase({
+    clerkUserId,
+    emails: clerkEmails,
+    firstName: clerkUser.firstName,
+    lastName: clerkUser.lastName,
+  });
 }

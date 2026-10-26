@@ -172,6 +172,7 @@ const en = {
   "uploader.error.type":
     "Unsupported file type. Please upload PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC, or HEIF.",
   "uploader.error.size": "File too large. Maximum size is {max}MB.",
+  "uploader.error.signedIn": "You must be signed in to upload files.",
   "uploader.status.uploading": "Uploading file…",
   "uploader.status.processing": "Extracting and indexing…",
   "uploader.status.done": "Done! Redirecting…",
@@ -552,6 +553,7 @@ const sq: typeof en = {
   "uploader.error.type":
     "Lloji i skedarit nuk mbështetet. Ngarkoni PDF, DOCX, PPTX, TXT, PNG, JPEG, HEIC ose HEIF.",
   "uploader.error.size": "Skedari është shumë i madh. Madhësia maksimale është {max}MB.",
+  "uploader.error.signedIn": "Duhet të jeni të kyçur për të ngarkuar skedarë.",
   "uploader.status.uploading": "Duke ngarkuar skedarin…",
   "uploader.status.processing": "Duke ekstraktuar dhe indeksuar…",
   "uploader.status.done": "Gati! Duke ridrejtuar…",

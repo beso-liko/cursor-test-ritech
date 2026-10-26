@@ -47,7 +47,8 @@ async function listAllSupabaseUsers(admin: AdminClient): Promise<User[]> {
 
   while (true) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 100 });
-    if (error || !data.users.length) break;
+    if (error) throw error;
+    if (!data.users.length) break;
 
     all.push(...data.users);
     if (data.users.length < 100) break;

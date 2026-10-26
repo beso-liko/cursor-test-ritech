@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@clerk/nextjs";
 import { useLanguage } from "@/components/LanguageProvider";
 import { isAtUploadCap, isUploadLimitAtCapError } from "@/lib/upload/is-at-cap";
 
@@ -69,7 +70,10 @@ function getBrowserTimezone(): string {
 
 async function fetchUploadUsage(): Promise<UploadUsage | null> {
   const timezone = getBrowserTimezone();
-  const res = await fetch(`/api/upload/usage?timezone=${encodeURIComponent(timezone)}`);
+  const res = await fetch(`/api/upload/usage?timezone=${encodeURIComponent(timezone)}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+  });
   if (!res.ok) return null;
   return res.json();
 }
@@ -88,6 +92,7 @@ function LimitReachedNotice({ message }: { message: string }) {
 export default function FileUploader() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { isLoaded, isSignedIn } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [globalStatus, setGlobalStatus] = useState<"idle" | "running" | "done" | "error">("idle");
@@ -181,9 +186,13 @@ export default function FileUploader() {
     setGlobalStatus("running");
     setGlobalError(null);
 
-    const meRes = await fetch("/api/me");
-    if (!meRes.ok) {
-      setGlobalError("You must be signed in to upload files.");
+    if (!isLoaded) {
+      setGlobalStatus("idle");
+      return;
+    }
+
+    if (!isSignedIn) {
+      setGlobalError(t("uploader.error.signedIn"));
       setGlobalStatus("error");
       return;
     }
@@ -220,6 +229,7 @@ export default function FileUploader() {
     const reserveRes = await fetch("/api/upload/reserve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ count: entries.length, timezone }),
     });
 
@@ -406,7 +416,7 @@ export default function FileUploader() {
       )}
 
       {allIdle && (
-        <Button className="w-full" onClick={handleUpload} disabled={atLimit}>
+        <Button className="w-full" onClick={handleUpload} disabled={atLimit || !isLoaded || !isSignedIn}>
           <Upload className="w-4 h-4 mr-2" />
           {entries.length === 1
             ? t("uploader.button.upload")
