@@ -67,11 +67,10 @@ export async function getUsageCount(
     .from("upload_usage")
     .select("upload_count")
     .eq("user_id", userId)
-    .eq("period_key", periodKey)
-    .maybeSingle();
+    .eq("period_key", periodKey);
 
   if (error) throw error;
-  return data?.upload_count ?? 0;
+  return (data ?? []).reduce((sum, row) => sum + row.upload_count, 0);
 }
 
 export async function getUploadUsageSnapshot(

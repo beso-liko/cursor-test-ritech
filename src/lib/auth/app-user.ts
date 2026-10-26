@@ -6,7 +6,7 @@ export type { AppUser };
 export function getClerkEmails(
   clerkUser: NonNullable<Awaited<ReturnType<typeof currentUser>>>
 ): string[] {
-  const emails = clerkUser.emailAddresses
+  const emails = (clerkUser.emailAddresses ?? [])
     .map((entry) => entry.emailAddress)
     .filter(Boolean) as string[];
 

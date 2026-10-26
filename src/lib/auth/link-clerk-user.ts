@@ -132,17 +132,31 @@ async function loadProfileEmailMap(admin: AdminClient): Promise<Map<string, stri
   return map;
 }
 
+async function findFirstProfile(
+  admin: AdminClient,
+  column: "email" | "clerk_id",
+  value: string
+) {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, first_name, last_name, clerk_id, email")
+    .eq(column, value)
+    .limit(1);
+
+  if (error) {
+    console.error(`profiles lookup by ${column} failed:`, error);
+    return null;
+  }
+
+  return data?.[0] ?? null;
+}
+
 async function findSupabaseUserByProfileEmail(
   admin: AdminClient,
   clerkEmails: string[]
 ): Promise<User | null> {
   for (const email of normalizeEmails(clerkEmails)) {
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-
+    const profile = await findFirstProfile(admin, "email", email);
     if (!profile) continue;
 
     const { data } = await admin.auth.admin.getUserById(profile.id);
@@ -153,13 +167,53 @@ async function findSupabaseUserByProfileEmail(
 }
 
 async function findProfileByClerkId(admin: AdminClient, clerkUserId: string) {
-  const { data } = await admin
-    .from("profiles")
-    .select("id, first_name, last_name, clerk_id, email")
-    .eq("clerk_id", clerkUserId)
-    .maybeSingle();
+  return findFirstProfile(admin, "clerk_id", clerkUserId);
+}
 
-  return data;
+async function findAuthUserByEmail(
+  admin: AdminClient,
+  email: string
+): Promise<User | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    return null;
+  }
+
+  const res = await fetch(
+    `${url}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${key}`,
+        apikey: key,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    console.error(
+      "Auth admin lookup by email failed:",
+      res.status,
+      await res.text()
+    );
+    return null;
+  }
+
+  const json = (await res.json()) as { users?: User[] } | User[];
+  const users = Array.isArray(json) ? json : json.users ?? [];
+  const normalized = email.toLowerCase();
+  return (
+    users.find((user) => collectSupabaseUserEmails(user).has(normalized)) ?? null
+  );
+}
+
+async function getUserFromProfileId(
+  admin: AdminClient,
+  profileId: string
+): Promise<User | null> {
+  const { data } = await admin.auth.admin.getUserById(profileId);
+  return data.user ?? null;
 }
 
 async function upsertProfile(
@@ -262,9 +316,21 @@ export async function linkClerkToSupabase(
   if (clerkEmails.length === 0) return null;
 
   const admin = createAdminClient();
+
+  const linkedProfile = await findProfileByClerkId(admin, identity.clerkUserId);
+  if (linkedProfile) {
+    const existing = await getUserFromProfileId(admin, linkedProfile.id);
+    if (existing) return linkSupabaseUser(admin, identity, existing);
+  }
+
   const profileMatch = await findSupabaseUserByProfileEmail(admin, clerkEmails);
   if (profileMatch) {
     return linkSupabaseUser(admin, identity, profileMatch);
+  }
+
+  for (const email of clerkEmails) {
+    const byEmail = await findAuthUserByEmail(admin, email);
+    if (byEmail) return linkSupabaseUser(admin, identity, byEmail);
   }
 
   const profileEmails = await loadProfileEmailMap(admin);
@@ -280,14 +346,6 @@ export async function linkClerkToSupabase(
     return linkSupabaseUser(admin, identity, best);
   }
 
-  const linkedProfile = await findProfileByClerkId(admin, identity.clerkUserId);
-  if (linkedProfile) {
-    const { data } = await admin.auth.admin.getUserById(linkedProfile.id);
-    if (data.user) {
-      return linkSupabaseUser(admin, identity, data.user);
-    }
-  }
-
   const primaryEmail = clerkEmails[0];
   const { data: created, error } = await admin.auth.admin.createUser({
     email: primaryEmail,
@@ -299,21 +357,26 @@ export async function linkClerkToSupabase(
     },
   });
 
-  if (error || !created.user) {
-    const retryMatches = await findSupabaseMatches(
-      admin,
-      identity.clerkUserId,
-      clerkEmails,
-      profileEmails
-    );
-    if (retryMatches.length > 0) {
-      const best = await pickBestSupabaseUser(admin, retryMatches);
-      return linkSupabaseUser(admin, identity, best);
-    }
-
-    console.error("Failed to create Supabase user for Clerk account:", error);
-    return null;
+  if (!error && created.user) {
+    return linkSupabaseUser(admin, identity, created.user);
   }
 
-  return linkSupabaseUser(admin, identity, created.user);
+  const existingAfterCreate = await findAuthUserByEmail(admin, primaryEmail);
+  if (existingAfterCreate) {
+    return linkSupabaseUser(admin, identity, existingAfterCreate);
+  }
+
+  const retryMatches = await findSupabaseMatches(
+    admin,
+    identity.clerkUserId,
+    clerkEmails,
+    profileEmails
+  );
+  if (retryMatches.length > 0) {
+    const best = await pickBestSupabaseUser(admin, retryMatches);
+    return linkSupabaseUser(admin, identity, best);
+  }
+
+  console.error("Failed to create Supabase user for Clerk account:", error);
+  return null;
 }
