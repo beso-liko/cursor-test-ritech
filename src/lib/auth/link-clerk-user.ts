@@ -47,7 +47,10 @@ async function listAllSupabaseUsers(admin: AdminClient): Promise<User[]> {
 
   while (true) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 100 });
-    if (error) throw error;
+    if (error) {
+      console.error("listUsers failed while linking Clerk user:", error);
+      break;
+    }
     if (!data.users.length) break;
 
     all.push(...data.users);
